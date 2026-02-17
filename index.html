@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>PR管理 Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -14,17 +14,20 @@
             --accent: #ff4757;
         }
 
-        /* 画面全体の固定設定 */
+        /* 画面全体の固定設定：左右の揺れを完全に防止 */
         html, body {
             height: 100%;
-            overflow: hidden; /* 全体のスクロールを禁止 */
+            width: 100vw;
+            overflow: hidden; 
             position: fixed;
-            width: 100%;
             font-family: 'Montserrat', 'Noto Sans JP', sans-serif;
             background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
                         url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1000&q=80');
             background-size: cover;
             background-position: center;
+            /* iPhone等の引っ張りスクロールを禁止 */
+            overscroll-behavior: none; 
+            -webkit-overflow-scrolling: touch;
         }
 
         .app-shell {
@@ -34,15 +37,16 @@
             max-width: 450px;
             margin: 0 auto;
             position: relative;
+            overflow: hidden;
         }
 
-        /* スクロール可能なエリア */
+        /* スクロール可能なメインエリア */
         .scroll-content {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
             padding: 16px;
-            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
         }
 
         .glass-card {
@@ -65,7 +69,7 @@
         .status-adjusting { background: #e3f2fd; color: #1976d2; }
         .status-upcoming { background: #e8f5e9; color: #2e7d32; }
         .status-completed { background: #f1f3f5; color: #495057; }
-        .status-failed { background: #343a40; color: #f8f9fa; } /* 頓挫 */
+        .status-failed { background: #343a40; color: #f8f9fa; }
 
         .tab-active { color: var(--accent) !important; }
 
@@ -86,25 +90,45 @@
             color: white;
             border: 1px solid rgba(255,255,255,0.3);
         }
-        .status-filter-btn.active {
-            background: white;
-            color: black;
-            font-weight: bold;
-        }
+        .status-filter-btn.active { background: white; color: black; font-weight: bold; }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* Modal Transition */
+        /* Modal Fixes */
         #modal.hidden { display: none; }
+        .modal-container {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+        }
         .modal-body {
-            max-height: 85vh;
+            width: 100%;
+            max-width: 450px;
+            max-height: 90vh;
+            background: white;
+            border-radius: 32px 32px 0 0;
+            position: relative;
+            z-index: 60;
             overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
         }
 
         /* Checkbox Custom Style */
         .checkbox-group label {
             transition: all 0.2s;
-            border: 1px solid transparent;
+            border: 1px solid #f3f4f6;
         }
         .checkbox-group input:checked + span {
             color: #ff4757;
@@ -118,8 +142,8 @@
 </head>
 <body>
     <div class="app-shell">
-        <!-- Header (Fixed) -->
-        <header class="p-4 pt-6 pb-2">
+        <!-- Header -->
+        <header class="p-4 pt-6 pb-2 shrink-0">
             <h1 class="text-white text-3xl font-bold tracking-tight">PR管理</h1>
             <p class="text-white/60 text-xs mt-1">案件・実績・スケジュール</p>
         </header>
@@ -144,7 +168,7 @@
                 </div>
 
                 <div class="space-y-4">
-                    <h2 class="text-white text-lg font-bold px-1">直近1週間の予定</h2>
+                    <h2 class="text-white text-lg font-bold px-1">直近の予定</h2>
                     <div id="upcoming-list" class="space-y-4"></div>
                 </div>
             </section>
@@ -168,11 +192,11 @@
                     </div>
                     <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
                 </div>
-                <div id="calendar-day-details" class="space-y-3 pb-20"></div>
+                <div id="calendar-day-details" class="space-y-3 pb-24"></div>
             </section>
 
             <!-- View: List -->
-            <section id="view-list" class="view hidden space-y-4 pb-20">
+            <section id="view-list" class="view hidden space-y-4 pb-24">
                 <div class="space-y-4">
                     <div class="relative">
                         <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/60"></i>
@@ -196,8 +220,8 @@
             <i data-lucide="plus" class="w-8 h-8"></i>
         </button>
 
-        <!-- Navbar (Fixed) -->
-        <nav class="bg-white/95 backdrop-blur-xl h-[85px] flex items-center justify-around border-t border-gray-100 z-40 px-6 pb-2 rounded-t-[32px]">
+        <!-- Navbar -->
+        <nav class="bg-white/95 backdrop-blur-xl h-[85px] shrink-0 flex items-center justify-around border-t border-gray-100 z-40 px-6 pb-2 rounded-t-[32px]">
             <button onclick="switchTab('dashboard')" class="flex flex-col items-center gap-1 text-gray-400" id="nav-dashboard">
                 <i data-lucide="layout-grid" class="w-6 h-6"></i>
                 <span class="text-[10px] font-bold">ホーム</span>
@@ -214,9 +238,9 @@
     </div>
 
     <!-- MODAL -->
-    <div id="modal" class="fixed inset-0 z-50 flex items-end justify-center hidden">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeModal()"></div>
-        <div class="glass-card w-full max-w-md bg-white rounded-t-[32px] relative z-10 flex flex-col modal-body no-scrollbar">
+    <div id="modal" class="modal-container hidden">
+        <div class="modal-overlay" onclick="closeModal()"></div>
+        <div class="modal-body no-scrollbar">
             <div class="w-12 h-1 bg-gray-200 rounded-full mx-auto my-4 shrink-0"></div>
             <form id="pr-form" class="p-6 space-y-6">
                 <input type="hidden" id="edit-id">
@@ -274,6 +298,18 @@
                             </label>
                             <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
                                 <input type="checkbox" name="todo" value="tieup" class="accent-red-500"> <span class="text-[11px]">タイアップ</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
+                                <input type="checkbox" name="todo" value="insight" class="accent-red-500"> <span class="text-[11px]">インサイト</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
+                                <input type="checkbox" name="todo" value="tabelog" class="accent-red-500"> <span class="text-[11px]">食べログ</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
+                                <input type="checkbox" name="todo" value="link" class="accent-red-500"> <span class="text-[11px]">リンク</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
+                                <input type="checkbox" name="todo" value="hashtag" class="accent-red-500"> <span class="text-[11px]">タグ</span>
                             </label>
                         </div>
                     </div>
@@ -334,7 +370,10 @@
         let currentMonth = new Date();
         let currentFilter = 'all';
 
-        const TODO_LABELS = { feed: 'フィード', reels: 'リール', insight: 'インサイト', google: 'Google', tieup: 'タイアップ', tabelog: '食べログ', link: 'リンク', hashtag: 'タグ' };
+        const TODO_LABELS = { 
+            feed: 'フィード', reels: 'リール', insight: 'インサイト', google: 'Google', 
+            tieup: 'タイアップ', tabelog: '食べログ', link: 'リンク', hashtag: 'タグ' 
+        };
         const CONDITION_LABELS = { 
             free_eat: '飲食自由', course: 'コース', food_spec: '料理指定', drink_spec: 'ドリンク指定', 
             plus1: '同伴1名', plus2: '同伴2名以上', free: '無償', paid: '有償' 
@@ -423,7 +462,7 @@
                         </div>
                         <div class="flex flex-wrap gap-1 mt-3 pt-3 border-t border-gray-100">
                              <span class="text-[8px] font-bold px-1.5 py-0.5 rounded ${getSourceClass(p.source)}">${p.source}</span>
-                             ${p.todos.map(t => `<span class="text-[8px] bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">${TODO_LABELS[t]}</span>`).join('')}
+                             ${(p.todos || []).map(t => `<span class="text-[8px] bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">${TODO_LABELS[t]}</span>`).join('')}
                              ${(p.conditions || []).map(c => `<span class="text-[8px] bg-red-50 text-red-500 border border-red-100 px-1.5 py-0.5 rounded-full">${CONDITION_LABELS[c]}</span>`).join('')}
                         </div>
                     </div>
@@ -434,13 +473,9 @@
         function renderList() {
             const container = document.getElementById('full-archive');
             const search = document.getElementById('search-input').value.toLowerCase();
-            
             let list = currentFilter === 'deleted' ? deletedProjects : projects;
-            
             let filtered = list.filter(p => p.shopName.toLowerCase().includes(search));
-            if (currentFilter !== 'all' && currentFilter !== 'deleted') {
-                filtered = filtered.filter(p => p.status === currentFilter);
-            }
+            if (currentFilter !== 'all' && currentFilter !== 'deleted') filtered = filtered.filter(p => p.status === currentFilter);
 
             container.innerHTML = filtered.map(p => `
                 <div class="glass-card p-4 flex flex-col gap-2" onclick="editProject('${p.id}', ${currentFilter === 'deleted'})">
@@ -452,7 +487,7 @@
                         <span class="status-pill shrink-0 ${STATUS_MAP[p.status]?.class || ''}">${STATUS_MAP[p.status]?.label || '不明'}</span>
                     </div>
                     <div class="flex flex-wrap gap-1">
-                        ${p.todos.map(t => `<span class="text-[8px] text-gray-500 bg-gray-100/50 px-1.5 py-0.5 rounded-full">${TODO_LABELS[t]}</span>`).join('')}
+                        ${(p.todos || []).map(t => `<span class="text-[8px] text-gray-500 bg-gray-100/50 px-1.5 py-0.5 rounded-full">${TODO_LABELS[t]}</span>`).join('')}
                         ${(p.conditions || []).map(c => `<span class="text-[8px] text-red-400 bg-red-50/50 px-1.5 py-0.5 rounded-full">${CONDITION_LABELS[c]}</span>`).join('')}
                     </div>
                 </div>
@@ -466,10 +501,8 @@
             const y = currentMonth.getFullYear(), m = currentMonth.getMonth();
             title.innerText = `${y}年 ${m + 1}月`;
             grid.innerHTML = '';
-
             const first = new Date(y, m, 1).getDay();
             const last = new Date(y, m + 1, 0).getDate();
-
             for (let i = 0; i < first; i++) grid.innerHTML += `<div></div>`;
             for (let d = 1; d <= last; d++) {
                 const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -507,9 +540,14 @@
             document.getElementById('restore-btn').classList.add('hidden');
             document.getElementById('modal').classList.remove('hidden');
             document.querySelector('.modal-body').scrollTop = 0;
+            // ページ全体のスクロールを一時的に無効化
+            document.body.style.overflow = 'hidden';
         }
 
-        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+        function closeModal() { 
+            document.getElementById('modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
 
         function editProject(id, isDeleted = false) {
             const list = isDeleted ? deletedProjects : projects;
@@ -522,11 +560,8 @@
             document.getElementById('visit-date').value = p.visitDate || '';
             document.getElementById('source').value = p.source;
             document.getElementById('notes').value = p.notes || '';
-            
-            // チェックボックスの復元
             document.querySelectorAll('input[name="todo"]').forEach(cb => cb.checked = (p.todos || []).includes(cb.value));
             document.querySelectorAll('input[name="condition"]').forEach(cb => cb.checked = (p.conditions || []).includes(cb.value));
-            
             if (isDeleted) {
                 document.getElementById('restore-btn').classList.remove('hidden');
                 document.getElementById('delete-btn').classList.remove('hidden');
