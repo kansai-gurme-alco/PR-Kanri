@@ -1,603 +1,600 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PR管理 Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap');
-        
-        :root {
-            --glass-bg: rgba(255, 255, 255, 0.9);
-            --accent: #ff4757;
-        }
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Plus, 
+  Trash2, 
+  Calendar, 
+  Clock, 
+  CheckCircle2, 
+  ChevronRight, 
+  Home, 
+  List,
+  ArrowLeft,
+  Search,
+  CheckCircle,
+  MapPin,
+  Filter
+} from 'lucide-react';
 
-        /* 画面全体の固定：左右の揺れを徹底的に防止 */
-        html, body {
-            height: 100%;
-            width: 100%;
-            overflow: hidden; 
-            position: fixed; /* 画面を固定してスクロールの遊びを消す */
-            font-family: 'Montserrat', 'Noto Sans JP', sans-serif;
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
-                        url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1000&q=80');
-            background-size: cover;
-            background-position: center;
-            overscroll-behavior: none; 
-            -webkit-overflow-scrolling: touch;
-            touch-action: manipulation; /* ダブルタップズームなどを抑制 */
-        }
+const App = () => {
+  const [view, setView] = useState('home'); // 'home', 'calendar', 'list', 'add', 'trash'
+  const [editingId, setEditingId] = useState(null);
+  
+  // カレンダーの動的表示用の状態
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedCalDate, setSelectedCalDate] = useState(today.toISOString().split('T')[0]);
+  
+  const [listFilter, setListFilter] = useState('all'); // 'all', 'active', 'completed', 'negotiating', 'cancelled'
+  const [projects, setProjects] = useState([
+    {
+      id: 1,
+      shopName: 'サンプルカフェ 渋谷店',
+      media: 'Instagram',
+      date: '2024-05-20',
+      time: '12:00',
+      status: 'active', // 来店予定
+      requests: ['フィード', 'リール'],
+      conditions: ['飲食自由', '無償'],
+      isDeleted: false
+    }
+  ]);
 
-        .app-shell {
-            height: 100%;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            max-width: 500px;
-            margin: 0 auto;
-            position: relative;
-            overflow: hidden;
-        }
+  const [formData, setFormData] = useState({
+    shopName: '',
+    media: 'Instagram',
+    date: '',
+    time: '',
+    status: 'active',
+    requests: [],
+    conditions: []
+  });
 
-        /* メインスクロールエリア */
-        .scroll-content {
-            flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden; /* 左右の揺れ防止 */
-            padding: 16px;
-            padding-bottom: 200px; 
-            overscroll-behavior-y: contain;
-        }
+  const mediaOptions = [
+    { name: 'Instagram', color: 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white' },
+    { name: 'TikTok', color: 'bg-black text-white' },
+    { name: 'Toridori', color: 'bg-gradient-to-r from-pink-500 via-red-400 via-yellow-400 via-green-400 to-blue-500 text-white shadow-sm' },
+    { name: 'ユニット', color: 'bg-yellow-300 text-gray-800' }
+  ];
 
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(14px);
-            border-radius: 24px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-            width: 100%;
-        }
+  const statusOptions = [
+    { label: '条件交渉中', value: 'negotiating', color: 'bg-blue-100 text-blue-600' },
+    { label: '来店予定', value: 'active', color: 'bg-purple-100 text-purple-600' },
+    { label: '完了', value: 'completed', color: 'bg-green-100 text-green-600' },
+    { label: '頓挫', value: 'cancelled', color: 'bg-red-100 text-red-600' }
+  ];
 
-        /* 入力欄のズーム防止: 16px以上に設定 */
-        input, select, textarea {
-            font-size: 16px !important; 
-        }
+  const requestOptions = [
+    { label: 'フィード', value: 'feed' },
+    { label: 'リール', value: 'reels' },
+    { label: 'Google', value: 'google' },
+    { label: 'タイアップ', value: 'tieup' },
+    { label: 'インサイト', value: 'insight' },
+    { label: '食べログ', value: 'tabelog' },
+    { label: 'リンク', value: 'link' },
+    { label: 'タグ', value: 'hashtag' }
+  ];
 
-        /* Source Badge Colors */
-        .source-insta { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; }
-        .source-tiktok { background: #00f2ea; color: #000; }
-        .source-unit { background: #ffcc00; color: #000; }
-        .source-toridori { background: linear-gradient(to right, #ff4e50, #f9d423, #00f2ea, #bc1888); color: white; }
-        .source-other { background: #e2e8f0; color: #475569; }
+  const conditionOptions = [
+    { label: '飲食自由', value: 'free_eat' },
+    { label: 'コース', value: 'course' },
+    { label: '料理指定', value: 'food_spec' },
+    { label: 'ドリンク指定', value: 'drink_spec' },
+    { label: '同伴1名', value: 'plus1' },
+    { label: '同伴2名以上', value: 'plus2' },
+    { label: '無償', value: 'free' },
+    { label: '有償', value: 'paid' }
+  ];
 
-        /* Status Pills */
-        .status-pill { font-size: 0.65rem; padding: 4px 10px; border-radius: 20px; font-weight: 700; white-space: nowrap; }
-        .status-negotiating { background: #fff3bf; color: #947600; }
-        .status-adjusting { background: #e3f2fd; color: #1976d2; }
-        .status-upcoming { background: #e8f5e9; color: #2e7d32; }
-        .status-completed { background: #f1f3f5; color: #495057; }
-        .status-failed { background: #343a40; color: #f8f9fa; }
+  // 時間の選択肢を10分単位で生成
+  const timeOptions = [];
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 10) {
+      timeOptions.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    }
+  }
 
-        .tab-active { color: var(--accent) !important; background: rgba(255, 71, 87, 0.05); border-radius: 16px; }
+  const toggleSelection = (field, item) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: prev[field].includes(item) 
+        ? prev[field].filter(i => i !== item) 
+        : [...prev[field], item]
+    }));
+  };
 
-        .fab {
-            position: absolute;
-            bottom: 125px; 
-            right: 20px;
-            z-index: 45;
-            box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
-        }
+  const handleEdit = (project) => {
+    setEditingId(project.id);
+    setFormData({
+      shopName: project.shopName || '',
+      media: project.media,
+      date: project.date,
+      time: project.time,
+      status: project.status || 'active',
+      requests: [...project.requests],
+      conditions: [...project.conditions]
+    });
+    setView('add');
+  };
 
-        /* ナビゲーションバーの再調整 */
-        .bottom-nav {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(10px);
-            padding-bottom: calc(20px + env(safe-area-inset-bottom));
-            padding-top: 12px;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            border-top: 1px solid rgba(0,0,0,0.05);
-            z-index: 50;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-        }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (editingId) {
+      setProjects(projects.map(p => 
+        p.id === editingId ? { ...p, ...formData } : p
+      ));
+    } else {
+      const newProject = {
+        ...formData,
+        id: Date.now(),
+        isDeleted: false
+      };
+      setProjects([newProject, ...projects]);
+    }
+    setView('home');
+    resetForm();
+  };
 
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 80px;
-            height: 60px;
-            transition: all 0.2s;
-            color: #94a3b8;
-        }
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({ shopName: '', media: 'Instagram', date: '', time: '', status: 'active', requests: [], conditions: [] });
+  };
 
-        .status-filter-btn {
-            font-size: 0.75rem;
-            padding: 8px 16px;
-            border-radius: 12px;
-            white-space: nowrap;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-        .status-filter-btn.active { background: white; color: black; font-weight: bold; }
+  const toggleStatus = (e, id) => {
+    e.stopPropagation();
+    setProjects(projects.map(p => 
+      p.id === id ? { ...p, status: p.status === 'completed' ? 'active' : 'completed' } : p
+    ));
+  };
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        /* Modal - 揺れ防止のためposition:fixedで独立 */
-        .modal-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1000;
-            display: none;
-            align-items: flex-end;
-            justify-content: center;
-        }
-        .modal-container.active { display: flex; }
-        
-        .modal-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-        }
-        .modal-body {
-            width: 100%;
-            max-width: 500px;
-            max-height: 94vh;
-            background: white;
-            border-radius: 32px 32px 0 0;
-            position: relative;
-            z-index: 1010;
-            overflow-y: auto;
-            padding-bottom: env(safe-area-inset-bottom);
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
-        }
+  const deleteProject = (e, id) => {
+    e.stopPropagation();
+    setProjects(projects.map(p => p.id === id ? { ...p, isDeleted: true } : p));
+  };
 
-        .checkbox-group label {
-            transition: all 0.2s;
-            border: 1px solid #f3f4f6;
-        }
-        .checkbox-group input:checked + span {
-            color: #ff4757;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <div class="app-shell">
-        <!-- Header -->
-        <header class="p-4 pt-8 pb-2 shrink-0">
-            <h1 class="text-white text-3xl font-bold tracking-tight">PR管理</h1>
-            <p class="text-white/60 text-xs mt-1">案件・実績・スケジュール</p>
-        </header>
+  const restoreProject = (id) => {
+    setProjects(projects.map(p => p.id === id ? { ...p, isDeleted: false } : p));
+  };
 
-        <!-- Main Scrollable Area -->
-        <div class="scroll-content no-scrollbar">
-            <!-- View: Dashboard -->
-            <section id="view-dashboard" class="view space-y-6">
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="glass-card p-3 text-center">
-                        <span class="block text-[9px] font-bold text-gray-400 uppercase">進行中</span>
-                        <span id="stat-active" class="text-xl font-bold text-red-500">0</span>
-                    </div>
-                    <div class="glass-card p-3 text-center">
-                        <span class="block text-[9px] font-bold text-gray-400 uppercase">完了済</span>
-                        <span id="stat-completed" class="text-xl font-bold text-slate-800">0</span>
-                    </div>
-                    <div class="glass-card p-3 text-center">
-                        <span class="block text-[9px] font-bold text-gray-400 uppercase">全案件数</span>
-                        <span id="stat-total" class="text-xl font-bold text-blue-500">0</span>
-                    </div>
-                </div>
+  const totalCount = projects.length;
+  const activeCount = projects.filter(p => p.status === 'active' && !p.isDeleted).length;
+  const completedCount = projects.filter(p => p.status === 'completed' && !p.isDeleted).length;
 
-                <div class="space-y-4">
-                    <h2 class="text-white text-lg font-bold px-1">直近の予定</h2>
-                    <div id="upcoming-list" class="space-y-4"></div>
-                </div>
-            </section>
+  const getMediaStyle = (mediaName) => {
+    const opt = mediaOptions.find(o => o.name === mediaName);
+    return opt ? opt.color : 'bg-gray-200';
+  };
 
-            <!-- View: Calendar -->
-            <section id="view-calendar" class="view hidden space-y-4">
-                <div class="glass-card p-5">
-                    <div class="flex justify-between items-center mb-6">
-                        <button onclick="changeMonth(-1)" class="p-2"><i data-lucide="chevron-left" class="w-5 h-5 text-gray-400"></i></button>
-                        <h3 id="calendar-title" class="font-bold text-gray-800">2024年 10月</h3>
-                        <button onclick="changeMonth(1)" class="p-2"><i data-lucide="chevron-right" class="w-5 h-5 text-gray-400"></i></button>
-                    </div>
-                    <div class="grid grid-cols-7 gap-1 text-center mb-3">
-                        <div class="text-[10px] text-red-400 font-bold">日</div>
-                        <div class="text-[10px] text-gray-400">月</div>
-                        <div class="text-[10px] text-gray-400">火</div>
-                        <div class="text-[10px] text-gray-400">水</div>
-                        <div class="text-[10px] text-gray-400">木</div>
-                        <div class="text-[10px] text-gray-400">金</div>
-                        <div class="text-[10px] text-blue-400 font-bold">土</div>
-                    </div>
-                    <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
-                </div>
-                <div id="calendar-day-details" class="space-y-3"></div>
-            </section>
+  const getStatusLabel = (statusValue) => {
+    const opt = statusOptions.find(o => o.value === statusValue);
+    return opt ? opt : { label: statusValue, color: 'bg-gray-100 text-gray-600' };
+  };
 
-            <!-- View: List -->
-            <section id="view-list" class="view hidden space-y-4">
-                <div class="space-y-4">
-                    <div class="relative">
-                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/60"></i>
-                        <input type="text" id="search-input" oninput="renderList()" placeholder="店舗名で検索..." class="w-full text-sm pl-10 pr-4 py-4 rounded-2xl bg-white/20 text-white placeholder-white/60 outline-none backdrop-blur-md">
-                    </div>
-                    <div class="flex gap-2 overflow-x-auto no-scrollbar">
-                        <button onclick="filterByStatus('all')" id="filter-all" class="status-filter-btn active">すべて</button>
-                        <button onclick="filterByStatus('negotiating')" id="filter-negotiating" class="status-filter-btn">交渉中</button>
-                        <button onclick="filterByStatus('upcoming')" id="filter-upcoming" class="status-filter-btn">予定</button>
-                        <button onclick="filterByStatus('completed')" id="filter-completed" class="status-filter-btn">完了</button>
-                        <button onclick="filterByStatus('deleted')" id="filter-deleted" class="status-filter-btn flex items-center gap-1"><i data-lucide="trash-2" class="w-3 h-3"></i> ゴミ箱</button>
-                    </div>
-                </div>
-                <div id="full-archive" class="space-y-3"></div>
-            </section>
+  // ソートとフィルタリングを適用したリスト
+  // ホーム画面用：今日に近い順（昇順）
+  const getHomeSortedProjects = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return projects
+      .filter(p => !p.isDeleted)
+      .sort((a, b) => {
+        // 日付で比較（昇順：古い（今日に近い）順）
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return a.time.localeCompare(b.time);
+      });
+  };
+
+  // 通常リスト用：フィルタリング適用
+  const getFilteredAndSortedProjects = () => {
+    return projects
+      .filter(p => !p.isDeleted)
+      .filter(p => listFilter === 'all' || p.status === listFilter)
+      .sort((a, b) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return b.time.localeCompare(a.time);
+      });
+  };
+
+  // カレンダー操作用関数
+  const changeMonth = (offset) => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1));
+  };
+
+  const ProjectCard = ({ project }) => {
+    const statusInfo = getStatusLabel(project.status);
+    return (
+      <div 
+        onClick={() => handleEdit(project)}
+        className={`bg-white/70 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-white/40 transition-all active:scale-[0.98] cursor-pointer ${project.status === 'completed' ? 'opacity-60' : ''}`}
+      >
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${getMediaStyle(project.media)}`}>
+              {project.media}
+            </span>
+            <span className={`${statusInfo.color} text-[10px] px-2 py-1 rounded-full font-bold`}>
+              {statusInfo.label}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={(e) => toggleStatus(e, project.id)} className={`${project.status === 'completed' ? 'text-green-500' : 'text-gray-300'} hover:text-green-400`}>
+              <CheckCircle size={20} />
+            </button>
+            <button onClick={(e) => deleteProject(e, project.id)} className="text-gray-400 hover:text-red-500">
+              <Trash2 size={18} />
+            </button>
+          </div>
         </div>
 
-        <!-- FAB -->
-        <button onclick="openModal()" class="fab bg-red-500 text-white w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-95 shadow-xl">
-            <i data-lucide="plus" class="w-8 h-8"></i>
+        <div className="mb-3">
+          <h3 className="text-base font-bold text-gray-800 flex items-center gap-1">
+            <MapPin size={16} className="text-gray-400" />
+            {project.shopName || '店舗名未入力'}
+          </h3>
+        </div>
+        
+        <div className="flex items-center gap-4 mb-3 text-gray-700">
+          <div className="flex items-center gap-1">
+            <Calendar size={14} />
+            <span className="text-sm">{project.date || '未設定'}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Clock size={14} />
+            <span className="text-sm">{project.time || '--:--'}</span>
+          </div>
+        </div>
+
+        <div className="space-y-2 border-t border-gray-100 pt-2">
+          <div className="flex flex-wrap gap-1">
+            <span className="text-[10px] font-bold text-gray-400 w-full uppercase">依頼内容</span>
+            {project.requests.length > 0 ? project.requests.map((r, idx) => (
+              <span key={`${project.id}-req-${idx}`} className="bg-gray-100/80 px-2 py-0.5 rounded text-[10px] text-gray-600">{r}</span>
+            )) : <span className="text-[10px] text-gray-300 italic">なし</span>}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            <span className="text-[10px] font-bold text-gray-400 w-full uppercase">条件</span>
+            {project.conditions.length > 0 ? project.conditions.map((c, idx) => (
+              <span key={`${project.id}-cond-${idx}`} className="bg-blue-50/80 px-2 py-0.5 rounded text-[10px] text-blue-600">{c}</span>
+            )) : <span className="text-[10px] text-gray-300 italic">なし</span>}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const Header = () => (
+    <header className="px-6 py-6 flex justify-between items-center bg-white/30 backdrop-blur-md sticky top-0 z-10">
+      <div className="flex items-center overflow-visible">
+        <h1 className="text-[28px] font-[1000] italic tracking-tight leading-none bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] bg-clip-text text-transparent filter drop-shadow-sm py-1 pr-2" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+          PR管理
+        </h1>
+      </div>
+      <div className="flex items-center gap-4">
+        <button onClick={() => setView('trash')} className="p-2 bg-white/50 rounded-full hover:bg-white/80 transition shadow-sm">
+          <Trash2 size={24} className="text-gray-700" />
         </button>
-
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav">
-            <button onclick="switchTab('dashboard')" class="nav-item" id="nav-dashboard">
-                <i data-lucide="layout-grid" class="w-6 h-6"></i>
-                <span class="text-[10px] font-bold mt-1">ホーム</span>
-            </button>
-            <button onclick="switchTab('calendar')" class="nav-item" id="nav-calendar">
-                <i data-lucide="calendar" class="w-6 h-6"></i>
-                <span class="text-[10px] font-bold mt-1">予定表</span>
-            </button>
-            <button onclick="switchTab('list')" class="nav-item" id="nav-list">
-                <i data-lucide="layers" class="w-6 h-6"></i>
-                <span class="text-[10px] font-bold mt-1">リスト</span>
-            </button>
-        </nav>
-    </div>
-
-    <!-- MODAL -->
-    <div id="modal" class="modal-container">
-        <div class="modal-overlay" onclick="closeModal()"></div>
-        <div class="modal-body no-scrollbar">
-            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-4 shrink-0"></div>
-            <form id="pr-form" class="p-6 space-y-6">
-                <input type="hidden" id="edit-id">
-                <h2 class="text-xl font-bold text-gray-800" id="modal-title">案件登録</h2>
-                
-                <div class="space-y-6">
-                    <div class="space-y-4">
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">店舗名 *</label>
-                            <input type="text" id="shop-name" required class="w-full p-4 bg-gray-50 rounded-xl outline-none border border-transparent focus:border-red-400">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="space-y-1">
-                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ステータス</label>
-                                <select id="status" class="w-full p-4 bg-gray-50 rounded-xl outline-none border border-transparent">
-                                    <option value="negotiating">交渉中</option>
-                                    <option value="adjusting">日程調整</option>
-                                    <option value="upcoming">来店予定</option>
-                                    <option value="completed">完了</option>
-                                    <option value="failed">頓挫</option>
-                                </select>
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">来店日時</label>
-                                <input type="datetime-local" id="visit-date" class="w-full p-4 bg-gray-50 rounded-xl outline-none border border-transparent">
-                            </div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">依頼媒体</label>
-                            <select id="source" class="w-full p-4 bg-gray-50 rounded-xl outline-none border border-transparent">
-                                <option value="Instagram">Instagram</option>
-                                <option value="TikTok">TikTok</option>
-                                <option value="ユニット">ユニット</option>
-                                <option value="トリドリ">トリドリ</option>
-                                <option value="その他">その他</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- 依頼内容 (TODO) -->
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">依頼内容（TODO）</label>
-                        <div class="grid grid-cols-2 gap-2 checkbox-group">
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="feed" class="w-5 h-5 accent-red-500"> <span class="text-[11px]">フィード</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="reels" class="w-5 h-5 accent-red-500"> <span class="text-[11px]">リール</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="google" class="w-5 h-5 accent-red-500"> <span class="text-[11px]">Google</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="tieup" class="w-5 h-5 accent-red-500"> <span class="text-[11px]">タイアップ</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">備考</label>
-                        <textarea id="notes" class="w-full p-4 bg-gray-50 rounded-xl outline-none h-24 border border-transparent focus:border-red-400"></textarea>
-                    </div>
-                </div>
-
-                <div class="flex gap-3 pt-6 pb-12">
-                    <button type="button" onclick="deleteToTrash()" id="delete-btn" class="hidden flex-shrink-0 w-14 h-14 bg-gray-100 text-gray-400 rounded-xl flex items-center justify-center">
-                        <i data-lucide="trash-2"></i>
-                    </button>
-                    <button type="button" onclick="restoreFromTrash()" id="restore-btn" class="hidden flex-shrink-0 w-14 h-14 bg-green-100 text-green-600 rounded-xl flex items-center justify-center">
-                        <i data-lucide="refresh-ccw"></i>
-                    </button>
-                    <button type="submit" class="flex-grow bg-gray-900 text-white font-bold h-14 rounded-xl active:scale-[0.98]">保存する</button>
-                </div>
-            </form>
+        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white bg-white/50 flex items-end justify-center">
+          <svg viewBox="0 0 24 24" className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M10 20l2-4h4l2 4M6 20l2-8 2-2 4 2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
+      </div>
+    </header>
+  );
+
+  const StatsBar = () => (
+    <div className="px-6 py-4 grid grid-cols-3 gap-3">
+      <div className="bg-white/60 backdrop-blur-sm p-3 rounded-2xl text-center shadow-sm border border-white">
+        <div className="text-[10px] text-gray-500 font-bold mb-1">進行中</div>
+        <div className="text-xl font-black text-purple-600">{activeCount}</div>
+      </div>
+      <div className="bg-white/60 backdrop-blur-sm p-3 rounded-2xl text-center shadow-sm border border-white">
+        <div className="text-[10px] text-gray-500 font-bold mb-1">完了</div>
+        <div className="text-xl font-black text-green-500">{completedCount}</div>
+      </div>
+      <div className="bg-white/60 backdrop-blur-sm p-3 rounded-2xl text-center shadow-sm border border-white">
+        <div className="text-[10px] text-gray-500 font-bold mb-1">総案件</div>
+        <div className="text-xl font-black text-gray-700">{totalCount}</div>
+      </div>
     </div>
+  );
 
-    <script>
-        // Use v9 to ensure fresh state
-        let projects = JSON.parse(localStorage.getItem('pr_manager_v9') || '[]');
-        let deletedProjects = JSON.parse(localStorage.getItem('pr_manager_deleted_v9') || '[]');
-        let currentMonth = new Date();
-        let currentFilter = 'all';
+  const Navigation = () => (
+    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 flex justify-around items-center py-3 px-4 z-20">
+      <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view === 'home' ? 'text-purple-600' : 'text-gray-400'}`}>
+        <Home size={24} />
+        <span className="text-[10px] font-bold">ホーム</span>
+      </button>
+      <button onClick={() => setView('calendar')} className={`flex flex-col items-center gap-1 ${view === 'calendar' ? 'text-purple-600' : 'text-gray-400'}`}>
+        <Calendar size={24} />
+        <span className="text-[10px] font-bold">カレンダー</span>
+      </button>
+      <button onClick={() => setView('list')} className={`flex flex-col items-center gap-1 ${view === 'list' ? 'text-purple-600' : 'text-gray-400'}`}>
+        <List size={24} />
+        <span className="text-[10px] font-bold">リスト</span>
+      </button>
+    </nav>
+  );
 
-        const STATUS_MAP = {
-            negotiating: { label: '交渉中', class: 'status-negotiating' },
-            adjusting: { label: '日程調整', class: 'status-adjusting' },
-            upcoming: { label: '来店予定', class: 'status-upcoming' },
-            completed: { label: '完了', class: 'status-completed' },
-            failed: { label: '頓挫', class: 'status-failed' }
-        };
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 font-sans text-gray-900 max-w-md mx-auto shadow-2xl relative overflow-hidden pb-20">
+      <div className="absolute -top-20 -left-20 w-64 h-64 bg-pink-300 rounded-full blur-[100px] opacity-30 animate-pulse"></div>
+      <div className="absolute top-1/2 -right-20 w-80 h-80 bg-purple-300 rounded-full blur-[120px] opacity-30"></div>
+      
+      <div className="relative h-screen overflow-y-auto no-scrollbar">
+        {view === 'home' && (
+          <>
+            <Header />
+            <StatsBar />
+            <div className="p-4 space-y-4">
+              <h2 className="px-2 text-xs font-bold text-gray-500 uppercase tracking-wider">直近の予定（日付の近い順）</h2>
+              {getHomeSortedProjects().slice(0, 10).map(p => <ProjectCard key={`home-proj-${p.id}`} project={p} />)}
+            </div>
+            <button 
+              onClick={() => { resetForm(); setView('add'); }}
+              className="fixed bottom-24 right-8 w-14 h-14 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95 z-30"
+            >
+              <Plus size={32} />
+            </button>
+          </>
+        )}
 
-        window.onload = () => {
-            renderAll();
-            switchTab('dashboard');
-        };
+        {view === 'list' && (
+          <>
+            <Header />
+            <div className="p-4 space-y-4">
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                <input type="text" placeholder="案件を検索..." className="w-full p-3 pl-10 rounded-xl bg-white/60 border-none shadow-sm" />
+              </div>
+              
+              <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar py-1">
+                {[
+                  { label: 'すべて', value: 'all' },
+                  ...statusOptions
+                ].map(filter => (
+                  <button
+                    key={`filter-${filter.value}`}
+                    onClick={() => setListFilter(filter.value)}
+                    className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition shadow-sm ${listFilter === filter.value ? 'bg-purple-600 text-white' : 'bg-white text-gray-500'}`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
 
-        function saveData() {
-            localStorage.setItem('pr_manager_v9', JSON.stringify(projects));
-            localStorage.setItem('pr_manager_deleted_v9', JSON.stringify(deletedProjects));
-            renderAll();
-        }
+              {getFilteredAndSortedProjects().map(p => <ProjectCard key={`list-proj-${p.id}`} project={p} />)}
+            </div>
+          </>
+        )}
 
-        function renderAll() {
-            updateStats();
-            renderUpcoming();
-            renderCalendar();
-            renderList();
-            lucide.createIcons();
-        }
-
-        function updateStats() {
-            const activeCount = projects.filter(p => p.status !== 'completed' && p.status !== 'failed').length;
-            const completedCount = projects.filter(p => p.status === 'completed').length;
-            document.getElementById('stat-active').innerText = activeCount;
-            document.getElementById('stat-completed').innerText = completedCount;
-            document.getElementById('stat-total').innerText = projects.length; 
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-            document.getElementById(`view-${tab}`).classList.remove('hidden');
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('tab-active'));
-            document.getElementById(`nav-${tab}`).classList.add('tab-active');
-            document.querySelector('.scroll-content').scrollTo(0,0);
-        }
-
-        function filterByStatus(status) {
-            currentFilter = status;
-            document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(`filter-${status}`).classList.add('active');
-            renderList();
-        }
-
-        function getSourceClass(source) {
-            const map = { 'Instagram': 'source-insta', 'TikTok': 'source-tiktok', 'ユニット': 'source-unit', 'トリドリ': 'source-toridori' };
-            return map[source] || 'source-other';
-        }
-
-        function sortProjects(list) {
-            return list.sort((a, b) => {
-                if (!a.visitDate && !b.visitDate) return 0;
-                if (!a.visitDate) return 1;
-                if (!b.visitDate) return -1;
-                return new Date(b.visitDate) - new Date(a.visitDate); 
-            });
-        }
-
-        function renderUpcoming() {
-            const container = document.getElementById('upcoming-list');
-            const now = new Date();
-            const nextWeek = new Date();
-            nextWeek.setDate(now.getDate() + 7);
-
-            const upcoming = projects
-                .filter(p => p.visitDate && new Date(p.visitDate) >= now && new Date(p.visitDate) <= nextWeek && p.status !== 'completed' && p.status !== 'failed')
-                .sort((a,b) => new Date(a.visitDate) - new Date(b.visitDate));
-
-            if (upcoming.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-white/40 text-xs italic">1週間以内の予定はありません</div>`;
-                return;
-            }
-
-            container.innerHTML = upcoming.map(p => {
-                const d = new Date(p.visitDate);
-                return `
-                    <div class="glass-card p-5" onclick="editProject('${p.id}')">
-                        <div class="flex justify-between items-start">
-                            <div class="max-w-[70%]">
-                                <h3 class="font-bold text-gray-800 text-sm truncate">${p.shopName}</h3>
-                                <p class="text-[10px] text-red-500 font-bold mt-1">${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</p>
-                            </div>
-                            <span class="status-pill ${STATUS_MAP[p.status].class}">${STATUS_MAP[p.status].label}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function renderList() {
-            const container = document.getElementById('full-archive');
-            const search = document.getElementById('search-input').value.toLowerCase();
-            let list = currentFilter === 'deleted' ? [...deletedProjects] : [...projects];
-            let filtered = list.filter(p => p.shopName.toLowerCase().includes(search));
-            if (currentFilter !== 'all' && currentFilter !== 'deleted') filtered = filtered.filter(p => p.status === currentFilter);
-            const sorted = sortProjects(filtered);
-
-            container.innerHTML = sorted.map(p => `
-                <div class="glass-card p-4 flex flex-col gap-2 mb-3" onclick="editProject('${p.id}', ${currentFilter === 'deleted'})">
-                    <div class="flex justify-between items-start">
-                        <div class="flex-grow overflow-hidden mr-2">
-                            <div class="flex items-center gap-2">
-                                <span class="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getSourceClass(p.source)}">${p.source}</span>
-                                <h3 class="font-bold text-sm text-gray-800 truncate">${p.shopName}</h3>
-                            </div>
-                            ${p.visitDate ? `<p class="text-[9px] text-gray-400 mt-1 font-semibold">${p.visitDate.replace('T', ' ')}</p>` : ''}
-                        </div>
-                        <span class="status-pill shrink-0 ${STATUS_MAP[p.status]?.class || ''}">${STATUS_MAP[p.status]?.label || '不明'}</span>
-                    </div>
+        {view === 'calendar' && (
+          <>
+            <Header />
+            <div className="p-6">
+              <div className="bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-black italic">
+                    {currentMonth.getFullYear()}.{String(currentMonth.getMonth() + 1).padStart(2, '0')}
+                  </h2>
+                  <div className="flex gap-2">
+                    <button onClick={() => changeMonth(-1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200">←</button>
+                    <button onClick={() => changeMonth(1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200">→</button>
+                  </div>
                 </div>
-            `).join('');
-            if (filtered.length === 0) container.innerHTML = `<p class="text-center text-white/30 text-xs py-10">該当する案件がありません</p>`;
-        }
-
-        function renderCalendar() {
-            const grid = document.getElementById('calendar-grid');
-            const title = document.getElementById('calendar-title');
-            const y = currentMonth.getFullYear(), m = currentMonth.getMonth();
-            title.innerText = `${y}年 ${m + 1}月`;
-            grid.innerHTML = '';
-            const first = new Date(y, m, 1).getDay();
-            const last = new Date(y, m + 1, 0).getDate();
-            for (let i = 0; i < first; i++) grid.innerHTML += `<div></div>`;
-            for (let d = 1; d <= last; d++) {
-                const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const has = projects.some(p => p.visitDate?.startsWith(dateStr));
-                grid.innerHTML += `
-                    <div onclick="showDay('${dateStr}')" class="h-12 flex flex-col items-center justify-center rounded-xl active:bg-black/5">
-                        <span class="text-xs font-bold text-gray-700">${d}</span>
-                        ${has ? '<div class="w-1.5 h-1.5 bg-red-500 rounded-full mt-0.5"></div>' : ''}
+                <div className="grid grid-cols-7 gap-2 mb-2">
+                  {['S','M','T','W','T','F','S'].map((d, idx) => (
+                    <div key={`day-header-${idx}`} className="text-center text-[10px] font-bold text-gray-400">
+                      {d}
                     </div>
-                `;
-            }
-        }
-
-        function showDay(date) {
-            const list = projects.filter(p => p.visitDate?.startsWith(date));
-            const container = document.getElementById('calendar-day-details');
-            if (list.length === 0) { container.innerHTML = ''; return; }
-            container.innerHTML = `<h4 class="text-white text-[10px] font-bold uppercase px-1 mt-4 mb-2">${date}</h4>` + list.map(p => `
-                <div class="glass-card p-4 flex justify-between items-center mb-2" onclick="editProject('${p.id}')">
-                    <div class="flex items-center gap-2">
-                        <span class="text-[8px] font-bold px-1.5 py-0.5 rounded ${getSourceClass(p.source)}">${p.source}</span>
-                        <span class="font-bold text-sm text-gray-800">${p.shopName}</span>
-                    </div>
-                    <span class="status-pill ${STATUS_MAP[p.status].class}">${STATUS_MAP[p.status].label}</span>
+                  ))}
                 </div>
-            `).join('');
-            lucide.createIcons();
-        }
+                <div className="grid grid-cols-7 gap-2">
+                  {(() => {
+                    const year = currentMonth.getFullYear();
+                    const month = currentMonth.getMonth();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const firstDay = new Date(year, month, 1).getDay();
+                    
+                    const calendarCells = [];
+                    for (let i = 0; i < firstDay; i++) {
+                      calendarCells.push(<div key={`empty-${i}`} className="h-10"></div>);
+                    }
+                    
+                    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+                      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                      const dayProjects = projects.filter(p => p.date === dateStr && !p.isDeleted);
+                      const hasProject = dayProjects.length > 0;
+                      const isSelected = selectedCalDate === dateStr;
+                      
+                      calendarCells.push(
+                        <div 
+                          key={`cal-day-${dayNum}`} 
+                          onClick={() => setSelectedCalDate(dateStr)}
+                          className={`h-10 flex flex-col items-center justify-center rounded-lg text-xs font-bold transition cursor-pointer ${isSelected ? 'bg-purple-600 text-white scale-110 shadow-md' : 'hover:bg-purple-50 text-gray-700'}`}
+                        >
+                          {dayNum}
+                          {hasProject && <div className={`w-1 h-1 rounded-full mt-1 ${isSelected ? 'bg-white' : 'bg-purple-400'}`}></div>}
+                        </div>
+                      );
+                    }
+                    return calendarCells;
+                  })()}
+                </div>
+              </div>
+              <div className="mt-6 space-y-4">
+                <div className="flex justify-between items-center px-2">
+                  <h3 className="text-sm font-bold text-gray-600">
+                    {selectedCalDate.replace(/-/g, '.')} の案件
+                  </h3>
+                  <span className="text-[10px] bg-white/50 px-2 py-1 rounded-full text-gray-400 font-bold">
+                    {projects.filter(p => p.date === selectedCalDate && !p.isDeleted).length}件
+                  </span>
+                </div>
+                {projects.filter(p => p.date === selectedCalDate && !p.isDeleted).length > 0 ? (
+                  projects.filter(p => p.date === selectedCalDate && !p.isDeleted).map(p => <ProjectCard key={`cal-list-${p.id}`} project={p} />)
+                ) : (
+                  <div className="text-center py-10 bg-white/30 rounded-2xl border border-dashed border-white/50 text-gray-400 text-xs italic">
+                    予定はありません
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
-        function openModal() {
-            document.getElementById('pr-form').reset();
-            document.getElementById('edit-id').value = '';
-            document.getElementById('modal-title').innerText = '案件登録';
-            document.getElementById('delete-btn').classList.add('hidden');
-            document.getElementById('restore-btn').classList.add('hidden');
-            document.getElementById('modal').classList.add('active');
-            document.querySelector('.modal-body').scrollTop = 0;
-            // モーダル表示時に背後をロック
-            document.body.style.overflow = 'hidden';
-        }
+        {view === 'add' && (
+          <div className="flex flex-col h-full bg-white/40">
+            <header className="p-6 flex items-center gap-4 bg-white/30 sticky top-0 z-10">
+              <button onClick={() => { setView('home'); resetForm(); }}><ArrowLeft /></button>
+              <h2 className="text-xl font-bold">{editingId ? '案件を修正' : '新規案件登録'}</h2>
+            </header>
 
-        function closeModal() { 
-            document.getElementById('modal').classList.remove('active'); 
-        }
+            <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto pb-32">
+              <section>
+                <label className="block text-sm font-bold text-gray-700 mb-2">店舗名</label>
+                <input 
+                  type="text" 
+                  placeholder="店舗名を入力してください"
+                  className="w-full p-4 rounded-xl bg-white border-none shadow-sm focus:ring-2 focus:ring-purple-400"
+                  value={formData.shopName}
+                  onChange={(e) => setFormData(f => ({...f, shopName: e.target.value}))}
+                />
+              </section>
 
-        function editProject(id, isDeleted = false) {
-            const list = isDeleted ? deletedProjects : projects;
-            const p = list.find(item => item.id === id);
-            if (!p) return;
-            openModal();
-            document.getElementById('edit-id').value = p.id;
-            document.getElementById('shop-name').value = p.shopName;
-            document.getElementById('status').value = p.status;
-            document.getElementById('visit-date').value = p.visitDate || '';
-            document.getElementById('source').value = p.source;
-            document.getElementById('notes').value = p.notes || '';
-            document.querySelectorAll('input[name="todo"]').forEach(cb => cb.checked = (p.todos || []).includes(cb.value));
-            if (isDeleted) {
-                document.getElementById('restore-btn').classList.remove('hidden');
-                document.getElementById('delete-btn').classList.remove('hidden');
-                document.getElementById('delete-btn').onclick = () => { if(confirm('完全に削除しますか？')){ deletedProjects = deletedProjects.filter(x => x.id !== id); saveData(); closeModal(); } };
-            } else {
-                document.getElementById('delete-btn').classList.remove('hidden');
-                document.getElementById('delete-btn').onclick = deleteToTrash;
-            }
-        }
+              <section>
+                <label className="block text-sm font-bold text-gray-700 mb-2">ステータス</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {statusOptions.map(opt => (
+                    <button
+                      key={`status-${opt.value}`}
+                      type="button"
+                      onClick={() => setFormData(f => ({...f, status: opt.value}))}
+                      className={`p-3 rounded-xl text-sm font-bold transition-all duration-200 shadow-sm ${formData.status === opt.value ? 'bg-purple-600 text-white' : 'bg-white text-gray-500'}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
 
-        document.getElementById('pr-form').onsubmit = (e) => {
-            e.preventDefault();
-            const id = document.getElementById('edit-id').value || Date.now().toString();
-            const p = {
-                id,
-                shopName: document.getElementById('shop-name').value,
-                status: document.getElementById('status').value,
-                visitDate: document.getElementById('visit-date').value,
-                source: document.getElementById('source').value,
-                notes: document.getElementById('notes').value,
-                todos: Array.from(document.querySelectorAll('input[name="todo"]:checked')).map(el => el.value),
-                conditions: [] 
-            };
-            const idx = projects.findIndex(item => item.id === id);
-            if (idx > -1) projects[idx] = p; else projects.push(p);
-            saveData();
-            closeModal();
-        };
+              <section>
+                <label className="block text-sm font-bold text-gray-700 mb-2">媒体</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {mediaOptions.map(opt => (
+                    <button
+                      key={`media-${opt.name}`}
+                      type="button"
+                      onClick={() => setFormData(f => ({...f, media: opt.name}))}
+                      className={`p-3 rounded-xl text-sm font-bold transition-all duration-200 ${formData.media === opt.name ? opt.color : 'bg-white text-gray-500'}`}
+                    >
+                      {opt.name}
+                    </button>
+                  ))}
+                </div>
+              </section>
 
-        function deleteToTrash() {
-            const id = document.getElementById('edit-id').value;
-            const idx = projects.findIndex(p => p.id === id);
-            if (idx === -1) return;
-            deletedProjects.push(projects[idx]);
-            projects.splice(idx, 1);
-            saveData();
-            closeModal();
-        }
+              <section className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">来店日</label>
+                  <input 
+                    type="date" 
+                    className="w-full p-3 rounded-xl bg-white border-none shadow-sm focus:ring-2 focus:ring-purple-400"
+                    value={formData.date}
+                    onChange={(e) => setFormData(f => ({...f, date: e.target.value}))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">時間</label>
+                  <select 
+                    className="w-full p-3 rounded-xl bg-white border-none shadow-sm focus:ring-2 focus:ring-purple-400"
+                    value={formData.time}
+                    onChange={(e) => setFormData(f => ({...f, time: e.target.value}))}
+                  >
+                    <option value="">--:--</option>
+                    {timeOptions.map((t) => (
+                      <option key={`time-opt-${t}`} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+              </section>
 
-        function restoreFromTrash() {
-            const id = document.getElementById('edit-id').value;
-            const idx = deletedProjects.findIndex(p => p.id === id);
-            if (idx === -1) return;
-            projects.push(deletedProjects[idx]);
-            deletedProjects.splice(idx, 1);
-            saveData();
-            closeModal();
-        }
+              <section className="space-y-2">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">依頼内容（TODO）</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {requestOptions.map(opt => (
+                    <label key={`req-opt-${opt.value}`} className="flex items-center gap-2 p-3 bg-white/60 backdrop-blur-sm rounded-xl cursor-pointer hover:bg-white/80 transition shadow-sm active:scale-95">
+                      <input 
+                        type="checkbox" 
+                        checked={formData.requests.includes(opt.label)}
+                        onChange={() => toggleSelection('requests', opt.label)}
+                        className="w-4 h-4 rounded text-red-500 focus:ring-red-500 accent-red-500" 
+                      />
+                      <span className="text-[11px] font-medium">{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
 
-        function changeMonth(delta) {
-            currentMonth.setMonth(currentMonth.getMonth() + delta);
-            renderCalendar();
-        }
-    </script>
-</body>
-</html>
+              <section className="space-y-2">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">条件</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {conditionOptions.map(opt => (
+                    <label key={`cond-opt-${opt.value}`} className="flex items-center gap-2 p-3 bg-white/60 backdrop-blur-sm rounded-xl cursor-pointer hover:bg-white/80 transition shadow-sm active:scale-95">
+                      <input 
+                        type="checkbox" 
+                        checked={formData.conditions.includes(opt.label)}
+                        onChange={() => toggleSelection('conditions', opt.label)}
+                        className="w-4 h-4 rounded text-red-500 focus:ring-red-500 accent-red-500" 
+                      />
+                      <span className="text-[11px] font-medium">{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+
+              <button 
+                type="submit"
+                className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-200"
+              >
+                {editingId ? '修正内容を保存' : '登録する'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {view === 'trash' && (
+          <div className="flex flex-col h-full bg-gray-50/50">
+            <header className="p-6 flex items-center gap-4 bg-white/30">
+              <button onClick={() => setView('home')}><ArrowLeft /></button>
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Trash2 size={20} /> ゴミ箱</h2>
+            </header>
+            <main className="p-4 flex-1 space-y-4 pb-24">
+              {projects.filter(p => p.isDeleted).length === 0 ? (
+                <div className="text-center py-20 text-gray-400">ゴミ箱は空です</div>
+              ) : (
+                projects.filter(p => p.isDeleted).map(project => (
+                  <div key={`trash-proj-${project.id}`} className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-gray-200 flex justify-between items-center opacity-70">
+                    <div>
+                      <div className="text-sm font-bold text-gray-700">{project.shopName || '店舗名なし'}</div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] ${getMediaStyle(project.media)} mb-1 inline-block`}>{project.media}</span>
+                      <div className="text-[10px] text-gray-500 font-bold">{project.date || '日付未設定'}</div>
+                    </div>
+                    <button onClick={() => restoreProject(project.id)} className="px-4 py-2 bg-white rounded-lg text-xs font-bold text-purple-600 border border-purple-200 hover:bg-purple-50">復元</button>
+                  </div>
+                ))
+              )}
+            </main>
+          </div>
+        )}
+      </div>
+
+      {(view === 'home' || view === 'calendar' || view === 'list') && <Navigation />}
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+    </div>
+  );
+};
+
+export default App;
