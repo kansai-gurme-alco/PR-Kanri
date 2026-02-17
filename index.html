@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PR管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+        
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.88);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --accent: #ff4757;
+        }
+
+        body {
+            font-family: 'Montserrat', 'Noto Sans JP', sans-serif;
+            background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), 
+                        url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1000&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #2f3542;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.15);
+        }
+
+        .app-container {
+            max-width: 450px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 120px;
+        }
+
+        .status-pill {
+            font-size: 0.6rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+        }
+
+        .tab-active {
+            color: var(--accent);
+            border-top: 3.5px solid var(--accent);
+        }
+
+        .calendar-day {
+            aspect-ratio: 1/1.2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 6px;
+            border-radius: 12px;
+        }
+
+        .calendar-dot {
+            width: 5px;
+            height: 5px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            margin-top: 2px;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 110px;
+            right: 20px;
+            z-index: 40;
+            box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
+        }
+
+        .status-filter-btn {
+            font-size: 0.7rem;
+            padding: 6px 14px;
+            border-radius: 12px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .status-filter-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+        .status-filter-btn:not(.active) {
+            background: rgba(255,255,255,0.5);
+            color: #666;
+        }
+
+        .check-item:has(input:checked) {
+            background-color: rgba(255, 71, 87, 0.1);
+            border-color: var(--accent);
+        }
+
+        ::-webkit-scrollbar { width: 0px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="p-4">
+    <div class="app-container">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6 pt-4 px-2">
+            <div>
+                <h1 class="text-white text-3xl font-bold tracking-tight">PR管理</h1>
+                <p class="text-white/80 text-xs mt-1">案件・実績・スケジュール</p>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-3 mb-6">
+            <div class="glass-card p-3 flex flex-col items-center justify-center">
+                <span class="text-[9px] font-bold text-gray-500 uppercase">進行中</span>
+                <span id="stat-active" class="text-xl font-bold text-red-500">0</span>
+            </div>
+            <div class="glass-card p-3 flex flex-col items-center justify-center">
+                <span class="text-[9px] font-bold text-gray-500 uppercase">PR実績</span>
+                <span id="stat-completed" class="text-xl font-bold text-slate-800">0</span>
+            </div>
+            <div class="glass-card p-3 flex flex-col items-center justify-center">
+                <span class="text-[9px] font-bold text-gray-500 uppercase">総数</span>
+                <span id="stat-total" class="text-xl font-bold text-slate-400">0</span>
+            </div>
+        </div>
+
+        <!-- Main Area -->
+        <div id="content-area" class="flex-grow">
+            <!-- View: Home -->
+            <section id="view-dashboard" class="view space-y-4">
+                <div class="flex items-center justify-between px-2">
+                    <h2 class="text-white text-lg font-bold">1週間以内の予定</h2>
+                    <span class="text-white/60 text-xs" id="current-date-display"></span>
+                </div>
+                <div id="upcoming-list" class="space-y-4">
+                    <!-- 1週間以内のカード -->
+                </div>
+            </section>
+
+            <!-- View: Calendar -->
+            <section id="view-calendar" class="view hidden">
+                <div class="glass-card p-5">
+                    <div class="flex justify-between items-center mb-6">
+                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-black/5 rounded-full transition"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                        <h3 id="calendar-title" class="font-bold text-gray-800 text-lg">2024年 10月</h3>
+                        <button onclick="changeMonth(1)" class="p-2 hover:bg-black/5 rounded-full transition"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                    </div>
+                    <div class="grid grid-cols-7 gap-1 text-center mb-3">
+                        <div class="text-[10px] font-bold text-red-400">日</div>
+                        <div class="text-[10px] font-bold text-gray-400">月</div>
+                        <div class="text-[10px] font-bold text-gray-400">火</div>
+                        <div class="text-[10px] font-bold text-gray-400">水</div>
+                        <div class="text-[10px] font-bold text-gray-400">木</div>
+                        <div class="text-[10px] font-bold text-gray-400">金</div>
+                        <div class="text-[10px] font-bold text-blue-400">土</div>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
+                </div>
+                <div id="calendar-day-details" class="mt-5 space-y-3"></div>
+            </section>
+
+            <!-- View: Archive -->
+            <section id="view-list" class="view hidden space-y-4">
+                <div class="flex flex-col gap-3 px-2">
+                    <h2 class="text-white text-lg font-bold">全ての案件</h2>
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/60"></i>
+                        <input type="text" id="search-input" oninput="renderList()" placeholder="店舗名で検索..." class="w-full text-sm pl-10 pr-4 py-2.5 rounded-2xl border-none outline-none bg-white/20 text-white placeholder-white/60 backdrop-blur-md">
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2 no-scrollbar">
+                        <button onclick="filterByStatus('all')" id="filter-all" class="status-filter-btn active">すべて</button>
+                        <button onclick="filterByStatus('negotiating')" id="filter-negotiating" class="status-filter-btn">交渉中</button>
+                        <button onclick="filterByStatus('adjusting')" id="filter-adjusting" class="status-filter-btn">日程調整</button>
+                        <button onclick="filterByStatus('upcoming')" id="filter-upcoming" class="status-filter-btn">予定</button>
+                        <button onclick="filterByStatus('completed')" id="filter-completed" class="status-filter-btn">完了</button>
+                    </div>
+                </div>
+                <div id="full-archive" class="space-y-3"></div>
+            </section>
+        </div>
+
+        <!-- FAB -->
+        <button onclick="openModal()" class="fab bg-red-500 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-transform active:scale-90">
+            <i data-lucide="plus" class="w-9 h-9"></i>
+        </button>
+
+        <!-- Navbar -->
+        <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl h-[90px] flex items-center justify-around border-t border-gray-100 z-40 px-8 rounded-t-[40px] shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
+            <button onclick="switchTab('dashboard')" class="nav-btn flex flex-col items-center gap-1.5 text-gray-400 transition" id="nav-dashboard">
+                <i data-lucide="layout-grid" class="w-6 h-6"></i>
+                <span class="text-[10px] font-bold tracking-widest">ホーム</span>
+            </button>
+            <button onclick="switchTab('calendar')" class="nav-btn flex flex-col items-center gap-1.5 text-gray-400 transition" id="nav-calendar">
+                <i data-lucide="calendar" class="w-6 h-6"></i>
+                <span class="text-[10px] font-bold tracking-widest">予定表</span>
+            </button>
+            <button onclick="switchTab('list')" class="nav-btn flex flex-col items-center gap-1.5 text-gray-400 transition" id="nav-list">
+                <i data-lucide="layers" class="w-6 h-6"></i>
+                <span class="text-[10px] font-bold tracking-widest">リスト</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- ENTRY MODAL -->
+    <div id="modal" class="fixed inset-0 z-50 hidden p-4 flex items-end sm:items-center justify-center">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-md" onclick="closeModal()"></div>
+        <div class="glass-card w-full max-w-md max-h-[90vh] overflow-hidden relative z-10 animate-slide-up bg-white rounded-t-[40px] sm:rounded-[40px] flex flex-col">
+            <div class="w-14 h-1.5 bg-gray-200 rounded-full mx-auto my-4 flex-shrink-0"></div>
+            
+            <form id="pr-form" class="p-6 overflow-y-auto space-y-6">
+                <input type="hidden" id="edit-id">
+                <h2 class="text-2xl font-bold text-gray-800" id="modal-title">案件登録</h2>
+                
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">店舗名 *</label>
+                    <input type="text" id="shop-name" required class="w-full p-4 bg-gray-50 rounded-2xl border-none ring-1 ring-gray-200 focus:ring-2 focus:ring-red-400 outline-none transition" placeholder="店舗名を入力">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">ステータス</label>
+                        <select id="status" class="w-full p-4 bg-gray-50 rounded-2xl border-none ring-1 ring-gray-200 outline-none appearance-none">
+                            <option value="negotiating">条件交渉中</option>
+                            <option value="adjusting">日程調整中</option>
+                            <option value="upcoming">来店予定</option>
+                            <option value="completed">完了</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">来店日時</label>
+                        <input type="datetime-local" id="visit-date" class="w-full p-4 bg-gray-50 rounded-2xl border-none ring-1 ring-gray-200 outline-none">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">依頼媒体</label>
+                    <select id="source" class="w-full p-4 bg-gray-50 rounded-2xl border-none ring-1 ring-gray-200 outline-none appearance-none">
+                        <option value="Instagram">Instagram (DM)</option>
+                        <option value="TikTok">TikTok (DM)</option>
+                        <option value="ユニット">ユニット</option>
+                        <option value="トリドリ">トリドリ</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">投稿プラットフォーム</label>
+                    <div class="flex gap-3">
+                        <label class="flex-1 flex items-center justify-center gap-2 p-4 border border-gray-100 rounded-2xl cursor-pointer check-item transition shadow-sm">
+                            <input type="checkbox" name="platform" value="instagram" class="accent-pink-500 w-4 h-4" checked>
+                            <span class="text-xs font-bold">Instagram</span>
+                        </label>
+                        <label class="flex-1 flex items-center justify-center gap-2 p-4 border border-gray-100 rounded-2xl cursor-pointer check-item transition shadow-sm">
+                            <input type="checkbox" name="platform" value="tiktok" class="accent-black w-4 h-4">
+                            <span class="text-xs font-bold">TikTok</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">依頼内容チェック</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-red-50 transition border border-transparent">
+                            <input type="checkbox" name="todo" value="feed" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">フィード投稿</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-red-50 transition border border-transparent">
+                            <input type="checkbox" name="todo" value="reels" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">リール動画</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-red-50 transition border border-transparent">
+                            <input type="checkbox" name="todo" value="insight" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">インサイト提出</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-red-50 transition border border-transparent">
+                            <input type="checkbox" name="todo" value="tieup" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">タイアップ設定</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-red-50 transition border border-transparent">
+                            <input type="checkbox" name="todo" value="google" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">Google口コミ</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-red-50 transition border border-transparent">
+                            <input type="checkbox" name="todo" value="tabelog" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">食べログ評価</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-red-50 transition border border-transparent">
+                            <input type="checkbox" name="todo" value="link" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">リンク記載</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-red-50 transition border border-transparent">
+                            <input type="checkbox" name="todo" value="hashtag" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">ハッシュタグ指定</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">備考・条件メモ</label>
+                    <textarea id="notes" class="w-full p-4 bg-gray-50 rounded-2xl border-none ring-1 ring-gray-200 outline-none text-sm h-28" placeholder="無償範囲、同行者など"></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-4 pb-10">
+                    <button type="button" onclick="deleteProject()" id="delete-btn" class="hidden flex-shrink-0 w-14 h-14 bg-gray-100 text-gray-400 rounded-2xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition">
+                        <i data-lucide="trash-2" class="w-6 h-6"></i>
+                    </button>
+                    <button type="submit" class="flex-grow bg-slate-900 text-white font-bold p-4 rounded-2xl shadow-xl active:scale-[0.98] transition">保存する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let projects = JSON.parse(localStorage.getItem('pr_manager_data_v4') || '[]');
+        let currentViewMonth = new Date();
+        let currentStatusFilter = 'all';
+
+        const TODO_LABELS = { feed: 'フィード', reels: 'リール', insight: 'インサイト', google: 'Google', tieup: 'タイアップ', tabelog: '食べログ', link: 'リンク', hashtag: 'タグ指定' };
+        const STATUS_INFO = {
+            negotiating: { label: '条件交渉中', class: 'bg-amber-100 text-amber-700' },
+            adjusting: { label: '日程調整中', class: 'bg-sky-100 text-sky-700' },
+            upcoming: { label: '来店予定', class: 'bg-emerald-100 text-emerald-700' },
+            completed: { label: '完了', class: 'bg-slate-200 text-slate-600' }
+        };
+
+        window.onload = () => {
+            document.getElementById('current-date-display').innerText = new Date().toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
+            switchTab('dashboard');
+            renderAll();
+        };
+
+        function saveData() {
+            localStorage.setItem('pr_manager_data_v4', JSON.stringify(projects));
+            renderAll();
+        }
+
+        function renderAll() {
+            updateStats();
+            renderUpcoming();
+            renderCalendar();
+            renderList();
+            lucide.createIcons();
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('tab-active', 'text-red-500'));
+            document.getElementById(`nav-${tabId}`).classList.add('tab-active', 'text-red-500');
+            if (tabId === 'calendar') renderCalendar();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function filterByStatus(status) {
+            currentStatusFilter = status;
+            document.querySelectorAll('.status-filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`filter-${status}`).classList.add('active');
+            renderList();
+        }
+
+        function updateStats() {
+            const now = new Date();
+            // PR実績: 完了 または 過去の来店日
+            const completed = projects.filter(p => {
+                if (p.status === 'completed') return true;
+                if (!p.visitDate) return false;
+                return new Date(p.visitDate) < now;
+            }).length;
+
+            // 進行中: 完了以外 かつ (来店日なし または 未来の来店日)
+            const active = projects.filter(p => {
+                if (p.status === 'completed') return false;
+                if (!p.visitDate) return true;
+                return new Date(p.visitDate) >= now;
+            }).length;
+
+            document.getElementById('stat-active').innerText = active;
+            document.getElementById('stat-completed').innerText = completed;
+            document.getElementById('stat-total').innerText = projects.length;
+        }
+
+        function renderUpcoming() {
+            const container = document.getElementById('upcoming-list');
+            const now = new Date();
+            const nextWeek = new Date();
+            nextWeek.setDate(now.getDate() + 7);
+
+            // 1週間以内の案件をフィルタリング
+            const items = projects
+                .filter(p => {
+                    if (!p.visitDate) return false;
+                    const d = new Date(p.visitDate);
+                    return d >= now && d <= nextWeek && p.status !== 'completed';
+                })
+                .sort((a, b) => new Date(a.visitDate) - new Date(b.visitDate));
+
+            if (items.length === 0) {
+                container.innerHTML = `<div class="glass-card p-10 text-center text-gray-400 text-xs italic">1週間以内の予定はありません</div>`;
+                return;
+            }
+
+            container.innerHTML = items.map(p => {
+                const date = new Date(p.visitDate);
+                const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
+                return `
+                    <div class="glass-card p-5 flex flex-col gap-3 active:scale-[0.98] transition shadow-md" onclick="editProject('${p.id}')">
+                        <div class="flex justify-between items-start">
+                            <div class="space-y-1">
+                                <h3 class="font-bold text-lg text-slate-800">${p.shopName}</h3>
+                                <div class="flex items-center gap-2 text-[10px] font-bold text-red-500">
+                                    <i data-lucide="calendar" class="w-3 h-3"></i> ${dateStr}
+                                </div>
+                            </div>
+                            <span class="status-pill ${STATUS_INFO[p.status].class}">${STATUS_INFO[p.status].label}</span>
+                        </div>
+                        <div class="flex items-center gap-2 pt-1">
+                            <span class="text-[9px] bg-slate-800 text-white px-2 py-0.5 rounded-md font-bold">${p.source || '不明'}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function renderList() {
+            const container = document.getElementById('full-archive');
+            const search = document.getElementById('search-input').value.toLowerCase();
+            
+            let filtered = projects.filter(p => p.shopName.toLowerCase().includes(search));
+            if (currentStatusFilter !== 'all') {
+                filtered = filtered.filter(p => p.status === currentStatusFilter);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="p-10 text-center text-white/40 text-sm">案件がありません</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).map(p => `
+                <div class="glass-card p-4 flex justify-between items-center" onclick="editProject('${p.id}')">
+                    <div class="space-y-1 overflow-hidden">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[8px] font-bold text-slate-400 border border-slate-300 px-1 rounded uppercase">${p.source || '不明'}</span>
+                            <h3 class="font-bold truncate text-slate-800">${p.shopName}</h3>
+                        </div>
+                        <div class="flex gap-1">
+                             ${p.platforms.map(plat => `<span class="text-[7px] text-gray-400 font-bold uppercase">${plat}</span>`).join('·')}
+                        </div>
+                    </div>
+                    <span class="status-pill flex-shrink-0 ${STATUS_INFO[p.status].class}">${STATUS_INFO[p.status].label}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const title = document.getElementById('calendar-title');
+            const year = currentViewMonth.getFullYear();
+            const month = currentViewMonth.getMonth();
+            title.innerText = `${year}年 ${month + 1}月`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            grid.innerHTML = '';
+            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayProjects = projects.filter(p => p.visitDate && p.visitDate.startsWith(dKey));
+                const isToday = new Date().toISOString().startsWith(dKey);
+
+                grid.innerHTML += `
+                    <div onclick="showDayDetails('${dKey}')" class="calendar-day hover:bg-black/5 transition ${isToday ? 'bg-red-500/10' : ''}">
+                        <span class="text-xs font-bold ${isToday ? 'text-red-500' : 'text-slate-700'}">${day}</span>
+                        <div class="flex flex-wrap gap-0.5 mt-1 justify-center">
+                            ${dayProjects.map(() => `<div class="calendar-dot"></div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function showDayDetails(dateKey) {
+            const container = document.getElementById('calendar-day-details');
+            const dayProjects = projects.filter(p => p.visitDate && p.visitDate.startsWith(dateKey));
+            if (dayProjects.length === 0) { container.innerHTML = ''; return; }
+
+            container.innerHTML = `<h4 class="text-white text-xs font-bold px-2 tracking-widest uppercase">${dateKey.replace(/-/g, '.')} の予定</h4>` + dayProjects.map(p => `
+                <div class="glass-card p-4 flex justify-between items-center" onclick="editProject('${p.id}')">
+                    <div class="overflow-hidden">
+                        <p class="font-bold text-sm text-slate-800 truncate">${p.shopName}</p>
+                        <p class="text-[10px] text-gray-400">${p.visitDate.split('T')[1]}</p>
+                    </div>
+                    <span class="status-pill ${STATUS_INFO[p.status].class}">${STATUS_INFO[p.status].label}</span>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function openModal() {
+            document.getElementById('pr-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('modal-title').innerText = '案件登録';
+            document.getElementById('delete-btn').classList.add('hidden');
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        function editProject(id) {
+            const p = projects.find(item => item.id === id);
+            if (!p) return;
+            openModal();
+            document.getElementById('modal-title').innerText = '案件編集';
+            document.getElementById('edit-id').value = p.id;
+            document.getElementById('shop-name').value = p.shopName;
+            document.getElementById('status').value = p.status;
+            document.getElementById('visit-date').value = p.visitDate || '';
+            document.getElementById('source').value = p.source || 'Instagram';
+            document.getElementById('notes').value = p.notes || '';
+            document.getElementById('delete-btn').classList.remove('hidden');
+            document.querySelectorAll('input[name="platform"]').forEach(cb => cb.checked = p.platforms?.includes(cb.value));
+            document.querySelectorAll('input[name="todo"]').forEach(cb => cb.checked = p.todos?.includes(cb.value));
+        }
+
+        document.getElementById('pr-form').onsubmit = (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value || Date.now().toString();
+            const shopName = document.getElementById('shop-name').value;
+            const status = document.getElementById('status').value;
+            const visitDate = document.getElementById('visit-date').value;
+            const source = document.getElementById('source').value;
+            const notes = document.getElementById('notes').value;
+            const platforms = Array.from(document.querySelectorAll('input[name="platform"]:checked')).map(el => el.value);
+            const todos = Array.from(document.querySelectorAll('input[name="todo"]:checked')).map(el => el.value);
+
+            const project = { id, shopName, status, visitDate, source, notes, platforms, todos, updatedAt: new Date().toISOString() };
+            const idx = projects.findIndex(p => p.id === id);
+            if (idx > -1) projects[idx] = project; else projects.push(project);
+            
+            saveData();
+            closeModal();
+        };
+
+        function changeMonth(delta) {
+            currentViewMonth.setMonth(currentViewMonth.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function deleteProject() {
+            const id = document.getElementById('edit-id').value;
+            if (!id || !confirm('この案件を削除しますか？')) return;
+            projects = projects.filter(p => p.id !== id);
+            saveData();
+            closeModal();
+        }
+    </script>
+</body>
+</html>
