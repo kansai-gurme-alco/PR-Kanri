@@ -53,6 +53,13 @@
             font-weight: 700;
         }
 
+        /* Source Badge Colors */
+        .source-insta { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; }
+        .source-tiktok { background: #00f2ea; color: #000; }
+        .source-unit { background: #ffcc00; color: #000; }
+        .source-toridori { background: linear-gradient(to right, #ff4e50, #f9d423, #00f2ea, #bc1888); color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .source-other { background: #e2e8f0; color: #475569; }
+
         .tab-active {
             color: var(--accent);
             border-top: 3.5px solid var(--accent);
@@ -142,9 +149,7 @@
                     <h2 class="text-white text-lg font-bold">1週間以内の予定</h2>
                     <span class="text-white/60 text-xs" id="current-date-display"></span>
                 </div>
-                <div id="upcoming-list" class="space-y-4">
-                    <!-- 1週間以内のカード -->
-                </div>
+                <div id="upcoming-list" class="space-y-4"></div>
             </section>
 
             <!-- View: Calendar -->
@@ -245,8 +250,8 @@
                 <div class="space-y-2">
                     <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">依頼媒体</label>
                     <select id="source" class="w-full p-4 bg-gray-50 rounded-2xl border-none ring-1 ring-gray-200 outline-none appearance-none">
-                        <option value="Instagram">Instagram (DM)</option>
-                        <option value="TikTok">TikTok (DM)</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="TikTok">TikTok</option>
                         <option value="ユニット">ユニット</option>
                         <option value="トリドリ">トリドリ</option>
                         <option value="その他">その他</option>
@@ -292,7 +297,7 @@
                             <input type="checkbox" name="todo" value="link" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">リンク記載</span>
                         </label>
                         <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-red-50 transition border border-transparent">
-                            <input type="checkbox" name="todo" value="hashtag" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">ハッシュタグ指定</span>
+                            <input type="checkbox" name="todo" value="hashtag" class="accent-red-500 w-4 h-4"> <span class="text-[11px] font-medium">タグ指定</span>
                         </label>
                     </div>
                 </div>
@@ -313,16 +318,36 @@
     </div>
 
     <script>
-        let projects = JSON.parse(localStorage.getItem('pr_manager_data_v4') || '[]');
+        let projects = JSON.parse(localStorage.getItem('pr_manager_data_v5') || '[]');
         let currentViewMonth = new Date();
         let currentStatusFilter = 'all';
 
-        const TODO_LABELS = { feed: 'フィード', reels: 'リール', insight: 'インサイト', google: 'Google', tieup: 'タイアップ', tabelog: '食べログ', link: 'リンク', hashtag: 'タグ指定' };
+        const TODO_LABELS = { 
+            feed: 'フィード', 
+            reels: 'リール', 
+            insight: 'インサイト', 
+            google: 'Google', 
+            tieup: 'タイアップ', 
+            tabelog: '食べログ', 
+            link: 'リンク', 
+            hashtag: 'タグ' 
+        };
+
         const STATUS_INFO = {
             negotiating: { label: '条件交渉中', class: 'bg-amber-100 text-amber-700' },
             adjusting: { label: '日程調整中', class: 'bg-sky-100 text-sky-700' },
             upcoming: { label: '来店予定', class: 'bg-emerald-100 text-emerald-700' },
             completed: { label: '完了', class: 'bg-slate-200 text-slate-600' }
+        };
+
+        const getSourceClass = (source) => {
+            switch(source) {
+                case 'Instagram': return 'source-insta';
+                case 'TikTok': return 'source-tiktok';
+                case 'ユニット': return 'source-unit';
+                case 'トリドリ': return 'source-toridori';
+                default: return 'source-other';
+            }
         };
 
         window.onload = () => {
@@ -332,7 +357,7 @@
         };
 
         function saveData() {
-            localStorage.setItem('pr_manager_data_v4', JSON.stringify(projects));
+            localStorage.setItem('pr_manager_data_v5', JSON.stringify(projects));
             renderAll();
         }
 
@@ -362,20 +387,8 @@
 
         function updateStats() {
             const now = new Date();
-            // PR実績: 完了 または 過去の来店日
-            const completed = projects.filter(p => {
-                if (p.status === 'completed') return true;
-                if (!p.visitDate) return false;
-                return new Date(p.visitDate) < now;
-            }).length;
-
-            // 進行中: 完了以外 かつ (来店日なし または 未来の来店日)
-            const active = projects.filter(p => {
-                if (p.status === 'completed') return false;
-                if (!p.visitDate) return true;
-                return new Date(p.visitDate) >= now;
-            }).length;
-
+            const completed = projects.filter(p => p.status === 'completed' || (p.visitDate && new Date(p.visitDate) < now)).length;
+            const active = projects.filter(p => p.status !== 'completed' && (!p.visitDate || new Date(p.visitDate) >= now)).length;
             document.getElementById('stat-active').innerText = active;
             document.getElementById('stat-completed').innerText = completed;
             document.getElementById('stat-total').innerText = projects.length;
@@ -387,7 +400,6 @@
             const nextWeek = new Date();
             nextWeek.setDate(now.getDate() + 7);
 
-            // 1週間以内の案件をフィルタリング
             const items = projects
                 .filter(p => {
                     if (!p.visitDate) return false;
@@ -407,16 +419,19 @@
                 return `
                     <div class="glass-card p-5 flex flex-col gap-3 active:scale-[0.98] transition shadow-md" onclick="editProject('${p.id}')">
                         <div class="flex justify-between items-start">
-                            <div class="space-y-1">
-                                <h3 class="font-bold text-lg text-slate-800">${p.shopName}</h3>
+                            <div class="space-y-1 overflow-hidden">
+                                <h3 class="font-bold text-lg text-slate-800 truncate">${p.shopName}</h3>
                                 <div class="flex items-center gap-2 text-[10px] font-bold text-red-500">
                                     <i data-lucide="calendar" class="w-3 h-3"></i> ${dateStr}
                                 </div>
                             </div>
                             <span class="status-pill ${STATUS_INFO[p.status].class}">${STATUS_INFO[p.status].label}</span>
                         </div>
-                        <div class="flex items-center gap-2 pt-1">
-                            <span class="text-[9px] bg-slate-800 text-white px-2 py-0.5 rounded-md font-bold">${p.source || '不明'}</span>
+                        <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100 mt-1">
+                            <span class="text-[9px] px-2 py-0.5 rounded-md font-bold ${getSourceClass(p.source)}">${p.source || '不明'}</span>
+                            <div class="flex gap-1">
+                                ${p.todos.map(t => `<span class="text-[8px] bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">${TODO_LABELS[t]}</span>`).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -429,9 +444,7 @@
             const search = document.getElementById('search-input').value.toLowerCase();
             
             let filtered = projects.filter(p => p.shopName.toLowerCase().includes(search));
-            if (currentStatusFilter !== 'all') {
-                filtered = filtered.filter(p => p.status === currentStatusFilter);
-            }
+            if (currentStatusFilter !== 'all') filtered = filtered.filter(p => p.status === currentStatusFilter);
 
             if (filtered.length === 0) {
                 container.innerHTML = `<div class="p-10 text-center text-white/40 text-sm">案件がありません</div>`;
@@ -439,17 +452,20 @@
             }
 
             container.innerHTML = filtered.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).map(p => `
-                <div class="glass-card p-4 flex justify-between items-center" onclick="editProject('${p.id}')">
-                    <div class="space-y-1 overflow-hidden">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[8px] font-bold text-slate-400 border border-slate-300 px-1 rounded uppercase">${p.source || '不明'}</span>
-                            <h3 class="font-bold truncate text-slate-800">${p.shopName}</h3>
+                <div class="glass-card p-4 flex flex-col gap-2" onclick="editProject('${p.id}')">
+                    <div class="flex justify-between items-start">
+                        <div class="flex flex-col gap-1 overflow-hidden">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[8px] font-bold px-1.5 py-0.5 rounded-md ${getSourceClass(p.source)}">${p.source || '不明'}</span>
+                                <h3 class="font-bold truncate text-slate-800 text-sm">${p.shopName}</h3>
+                            </div>
                         </div>
-                        <div class="flex gap-1">
-                             ${p.platforms.map(plat => `<span class="text-[7px] text-gray-400 font-bold uppercase">${plat}</span>`).join('·')}
-                        </div>
+                        <span class="status-pill flex-shrink-0 ${STATUS_INFO[p.status].class}">${STATUS_INFO[p.status].label}</span>
                     </div>
-                    <span class="status-pill flex-shrink-0 ${STATUS_INFO[p.status].class}">${STATUS_INFO[p.status].label}</span>
+                    <div class="flex flex-wrap gap-1">
+                        ${p.todos.map(t => `<span class="text-[8px] text-gray-500 bg-gray-100/50 px-1.5 py-0.5 rounded-full border border-gray-200/50">${TODO_LABELS[t]}</span>`).join('')}
+                        ${p.todos.length === 0 ? '<span class="text-[8px] text-gray-300 italic">内容未設定</span>' : ''}
+                    </div>
                 </div>
             `).join('');
         }
@@ -490,8 +506,11 @@
             container.innerHTML = `<h4 class="text-white text-xs font-bold px-2 tracking-widest uppercase">${dateKey.replace(/-/g, '.')} の予定</h4>` + dayProjects.map(p => `
                 <div class="glass-card p-4 flex justify-between items-center" onclick="editProject('${p.id}')">
                     <div class="overflow-hidden">
-                        <p class="font-bold text-sm text-slate-800 truncate">${p.shopName}</p>
-                        <p class="text-[10px] text-gray-400">${p.visitDate.split('T')[1]}</p>
+                        <div class="flex items-center gap-2">
+                             <span class="text-[8px] font-bold px-1.5 py-0.5 rounded-md ${getSourceClass(p.source)}">${p.source}</span>
+                             <p class="font-bold text-sm text-slate-800 truncate">${p.shopName}</p>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-0.5">${p.visitDate.split('T')[1]}</p>
                     </div>
                     <span class="status-pill ${STATUS_INFO[p.status].class}">${STATUS_INFO[p.status].label}</span>
                 </div>
