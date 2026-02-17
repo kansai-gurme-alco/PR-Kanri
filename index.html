@@ -14,10 +14,10 @@
             --accent: #ff4757;
         }
 
-        /* 画面全体の固定設定：左右の揺れを完全に防止 */
+        /* 画面全体の固定：左右の揺れを完全に防止 */
         html, body {
             height: 100%;
-            width: 100vw;
+            width: 100%;
             overflow: hidden; 
             position: fixed;
             font-family: 'Montserrat', 'Noto Sans JP', sans-serif;
@@ -25,7 +25,6 @@
                         url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1000&q=80');
             background-size: cover;
             background-position: center;
-            /* iPhone等の引っ張りスクロールを禁止 */
             overscroll-behavior: none; 
             -webkit-overflow-scrolling: touch;
         }
@@ -34,18 +33,18 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            max-width: 450px;
+            max-width: 500px;
             margin: 0 auto;
             position: relative;
-            overflow: hidden;
         }
 
-        /* スクロール可能なメインエリア */
+        /* メインスクロールエリア */
         .scroll-content {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
             padding: 16px;
+            padding-bottom: 180px; 
             overscroll-behavior-y: contain;
         }
 
@@ -60,7 +59,7 @@
         .source-insta { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; }
         .source-tiktok { background: #00f2ea; color: #000; }
         .source-unit { background: #ffcc00; color: #000; }
-        .source-toridori { background: linear-gradient(to right, #ff4e50, #f9d423, #00f2ea, #bc1888); color: white; text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
+        .source-toridori { background: linear-gradient(to right, #ff4e50, #f9d423, #00f2ea, #bc1888); color: white; }
         .source-other { background: #e2e8f0; color: #475569; }
 
         /* Status Pills */
@@ -71,14 +70,43 @@
         .status-completed { background: #f1f3f5; color: #495057; }
         .status-failed { background: #343a40; color: #f8f9fa; }
 
-        .tab-active { color: var(--accent) !important; }
+        .tab-active { color: var(--accent) !important; background: rgba(255, 71, 87, 0.05); border-radius: 16px; }
 
         .fab {
             position: absolute;
-            bottom: 110px;
+            bottom: 115px; 
             right: 20px;
-            z-index: 40;
+            z-index: 45;
             box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
+        }
+
+        /* ナビゲーションバー */
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            padding-bottom: calc(15px + env(safe-area-inset-bottom));
+            padding-top: 12px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            z-index: 50;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 55px;
+            transition: all 0.2s;
+            color: #94a3b8;
         }
 
         .status-filter-btn {
@@ -94,17 +122,14 @@
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* Modal Fixes */
-        #modal.hidden { display: none; }
+        /* Modal */
         .modal-container {
             position: fixed;
             inset: 0;
-            z-index: 50;
+            z-index: 100;
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            overflow: hidden;
-            overscroll-behavior: none;
         }
         .modal-overlay {
             position: absolute;
@@ -114,18 +139,16 @@
         }
         .modal-body {
             width: 100%;
-            max-width: 450px;
-            max-height: 90vh;
+            max-width: 500px;
+            max-height: 92vh;
             background: white;
             border-radius: 32px 32px 0 0;
             position: relative;
-            z-index: 60;
+            z-index: 110;
             overflow-y: auto;
-            overflow-x: hidden;
-            overscroll-behavior: contain;
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
-        /* Checkbox Custom Style */
         .checkbox-group label {
             transition: all 0.2s;
             border: 1px solid #f3f4f6;
@@ -143,7 +166,7 @@
 <body>
     <div class="app-shell">
         <!-- Header -->
-        <header class="p-4 pt-6 pb-2 shrink-0">
+        <header class="p-4 pt-8 pb-2 shrink-0">
             <h1 class="text-white text-3xl font-bold tracking-tight">PR管理</h1>
             <p class="text-white/60 text-xs mt-1">案件・実績・スケジュール</p>
         </header>
@@ -154,16 +177,16 @@
             <section id="view-dashboard" class="view space-y-6">
                 <div class="grid grid-cols-3 gap-3">
                     <div class="glass-card p-3 text-center">
-                        <span class="block text-[9px] font-bold text-gray-500 uppercase">進行中</span>
+                        <span class="block text-[9px] font-bold text-gray-400 uppercase">進行中</span>
                         <span id="stat-active" class="text-xl font-bold text-red-500">0</span>
                     </div>
                     <div class="glass-card p-3 text-center">
-                        <span class="block text-[9px] font-bold text-gray-500 uppercase">完了済</span>
+                        <span class="block text-[9px] font-bold text-gray-400 uppercase">完了済</span>
                         <span id="stat-completed" class="text-xl font-bold text-slate-800">0</span>
                     </div>
                     <div class="glass-card p-3 text-center">
-                        <span class="block text-[9px] font-bold text-gray-500 uppercase">ゴミ箱</span>
-                        <span id="stat-deleted" class="text-xl font-bold text-slate-400">0</span>
+                        <span class="block text-[9px] font-bold text-gray-400 uppercase">全案件数</span>
+                        <span id="stat-total" class="text-xl font-bold text-blue-500">0</span>
                     </div>
                 </div>
 
@@ -177,37 +200,36 @@
             <section id="view-calendar" class="view hidden space-y-4">
                 <div class="glass-card p-5">
                     <div class="flex justify-between items-center mb-6">
-                        <button onclick="changeMonth(-1)" class="p-2"><i data-lucide="chevron-left"></i></button>
+                        <button onclick="changeMonth(-1)" class="p-2"><i data-lucide="chevron-left" class="w-5 h-5 text-gray-400"></i></button>
                         <h3 id="calendar-title" class="font-bold text-gray-800">2024年 10月</h3>
-                        <button onclick="changeMonth(1)" class="p-2"><i data-lucide="chevron-right"></i></button>
+                        <button onclick="changeMonth(1)" class="p-2"><i data-lucide="chevron-right" class="w-5 h-5 text-gray-400"></i></button>
                     </div>
                     <div class="grid grid-cols-7 gap-1 text-center mb-3">
-                        <div class="text-[10px] text-red-400">日</div>
+                        <div class="text-[10px] text-red-400 font-bold">日</div>
                         <div class="text-[10px] text-gray-400">月</div>
                         <div class="text-[10px] text-gray-400">火</div>
                         <div class="text-[10px] text-gray-400">水</div>
                         <div class="text-[10px] text-gray-400">木</div>
                         <div class="text-[10px] text-gray-400">金</div>
-                        <div class="text-[10px] text-blue-400">土</div>
+                        <div class="text-[10px] text-blue-400 font-bold">土</div>
                     </div>
                     <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
                 </div>
-                <div id="calendar-day-details" class="space-y-3 pb-24"></div>
+                <div id="calendar-day-details" class="space-y-3"></div>
             </section>
 
             <!-- View: List -->
-            <section id="view-list" class="view hidden space-y-4 pb-24">
+            <section id="view-list" class="view hidden space-y-4">
                 <div class="space-y-4">
                     <div class="relative">
                         <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/60"></i>
-                        <input type="text" id="search-input" oninput="renderList()" placeholder="店舗名で検索..." class="w-full text-sm pl-10 pr-4 py-3 rounded-2xl bg-white/20 text-white placeholder-white/60 outline-none backdrop-blur-md border-none">
+                        <input type="text" id="search-input" oninput="renderList()" placeholder="店舗名で検索..." class="w-full text-sm pl-10 pr-4 py-3 rounded-2xl bg-white/20 text-white placeholder-white/60 outline-none backdrop-blur-md">
                     </div>
-                    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar">
                         <button onclick="filterByStatus('all')" id="filter-all" class="status-filter-btn active">すべて</button>
                         <button onclick="filterByStatus('negotiating')" id="filter-negotiating" class="status-filter-btn">交渉中</button>
                         <button onclick="filterByStatus('upcoming')" id="filter-upcoming" class="status-filter-btn">予定</button>
                         <button onclick="filterByStatus('completed')" id="filter-completed" class="status-filter-btn">完了</button>
-                        <button onclick="filterByStatus('failed')" id="filter-failed" class="status-filter-btn">頓挫</button>
                         <button onclick="filterByStatus('deleted')" id="filter-deleted" class="status-filter-btn flex items-center gap-1"><i data-lucide="trash-2" class="w-3 h-3"></i> ゴミ箱</button>
                     </div>
                 </div>
@@ -216,23 +238,23 @@
         </div>
 
         <!-- FAB -->
-        <button onclick="openModal()" class="fab bg-red-500 text-white w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-90">
+        <button onclick="openModal()" class="fab bg-red-500 text-white w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-95 shadow-xl">
             <i data-lucide="plus" class="w-8 h-8"></i>
         </button>
 
-        <!-- Navbar -->
-        <nav class="bg-white/95 backdrop-blur-xl h-[85px] shrink-0 flex items-center justify-around border-t border-gray-100 z-40 px-6 pb-2 rounded-t-[32px]">
-            <button onclick="switchTab('dashboard')" class="flex flex-col items-center gap-1 text-gray-400" id="nav-dashboard">
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button onclick="switchTab('dashboard')" class="nav-item" id="nav-dashboard">
                 <i data-lucide="layout-grid" class="w-6 h-6"></i>
-                <span class="text-[10px] font-bold">ホーム</span>
+                <span class="text-[10px] font-bold mt-1">ホーム</span>
             </button>
-            <button onclick="switchTab('calendar')" class="flex flex-col items-center gap-1 text-gray-400" id="nav-calendar">
+            <button onclick="switchTab('calendar')" class="nav-item" id="nav-calendar">
                 <i data-lucide="calendar" class="w-6 h-6"></i>
-                <span class="text-[10px] font-bold">予定表</span>
+                <span class="text-[10px] font-bold mt-1">予定表</span>
             </button>
-            <button onclick="switchTab('list')" class="flex flex-col items-center gap-1 text-gray-400" id="nav-list">
+            <button onclick="switchTab('list')" class="nav-item" id="nav-list">
                 <i data-lucide="layers" class="w-6 h-6"></i>
-                <span class="text-[10px] font-bold">リスト</span>
+                <span class="text-[10px] font-bold mt-1">リスト</span>
             </button>
         </nav>
     </div>
@@ -241,13 +263,12 @@
     <div id="modal" class="modal-container hidden">
         <div class="modal-overlay" onclick="closeModal()"></div>
         <div class="modal-body no-scrollbar">
-            <div class="w-12 h-1 bg-gray-200 rounded-full mx-auto my-4 shrink-0"></div>
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-4 shrink-0"></div>
             <form id="pr-form" class="p-6 space-y-6">
                 <input type="hidden" id="edit-id">
                 <h2 class="text-xl font-bold text-gray-800" id="modal-title">案件登録</h2>
                 
-                <div class="space-y-6 pb-4">
-                    <!-- 基本情報 -->
+                <div class="space-y-6">
                     <div class="space-y-4">
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">店舗名 *</label>
@@ -283,7 +304,7 @@
                         </div>
                     </div>
 
-                    <!-- 依頼内容（TODO） -->
+                    <!-- 依頼内容 (TODO) -->
                     <div class="space-y-2">
                         <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">依頼内容（TODO）</label>
                         <div class="grid grid-cols-2 gap-2 checkbox-group">
@@ -351,22 +372,22 @@
                     </div>
                 </div>
 
-                <div class="flex gap-3 pb-10 sticky bottom-0 bg-white pt-2">
+                <div class="flex gap-3 pt-6 pb-12">
                     <button type="button" onclick="deleteToTrash()" id="delete-btn" class="hidden flex-shrink-0 w-14 h-14 bg-gray-100 text-gray-400 rounded-xl flex items-center justify-center">
                         <i data-lucide="trash-2"></i>
                     </button>
                     <button type="button" onclick="restoreFromTrash()" id="restore-btn" class="hidden flex-shrink-0 w-14 h-14 bg-green-100 text-green-600 rounded-xl flex items-center justify-center">
                         <i data-lucide="refresh-ccw"></i>
                     </button>
-                    <button type="submit" class="flex-grow bg-gray-900 text-white font-bold p-4 rounded-xl">保存する</button>
+                    <button type="submit" class="flex-grow bg-gray-900 text-white font-bold h-14 rounded-xl">保存する</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        let projects = JSON.parse(localStorage.getItem('pr_manager_v6') || '[]');
-        let deletedProjects = JSON.parse(localStorage.getItem('pr_manager_deleted_v6') || '[]');
+        let projects = JSON.parse(localStorage.getItem('pr_manager_v8') || '[]');
+        let deletedProjects = JSON.parse(localStorage.getItem('pr_manager_deleted_v8') || '[]');
         let currentMonth = new Date();
         let currentFilter = 'all';
 
@@ -392,8 +413,8 @@
         };
 
         function saveData() {
-            localStorage.setItem('pr_manager_v6', JSON.stringify(projects));
-            localStorage.setItem('pr_manager_deleted_v6', JSON.stringify(deletedProjects));
+            localStorage.setItem('pr_manager_v8', JSON.stringify(projects));
+            localStorage.setItem('pr_manager_deleted_v8', JSON.stringify(deletedProjects));
             renderAll();
         }
 
@@ -406,17 +427,19 @@
         }
 
         function updateStats() {
-            document.getElementById('stat-active').innerText = projects.filter(p => p.status !== 'completed' && p.status !== 'failed').length;
-            document.getElementById('stat-completed').innerText = projects.filter(p => p.status === 'completed').length;
-            document.getElementById('stat-deleted').innerText = deletedProjects.length;
+            const activeCount = projects.filter(p => p.status !== 'completed' && p.status !== 'failed').length;
+            const completedCount = projects.filter(p => p.status === 'completed').length;
+            document.getElementById('stat-active').innerText = activeCount;
+            document.getElementById('stat-completed').innerText = completedCount;
+            document.getElementById('stat-total').innerText = projects.length; // 進行中+完了の合計値
         }
 
         function switchTab(tab) {
             document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
             document.getElementById(`view-${tab}`).classList.remove('hidden');
-            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('tab-active'));
             document.getElementById(`nav-${tab}`).classList.add('tab-active');
-            window.scrollTo(0,0);
+            document.querySelector('.scroll-content').scrollTo(0,0);
         }
 
         function filterByStatus(status) {
@@ -427,11 +450,18 @@
         }
 
         function getSourceClass(source) {
-            if (source === 'Instagram') return 'source-insta';
-            if (source === 'TikTok') return 'source-tiktok';
-            if (source === 'ユニット') return 'source-unit';
-            if (source === 'トリドリ') return 'source-toridori';
-            return 'source-other';
+            const map = { 'Instagram': 'source-insta', 'TikTok': 'source-tiktok', 'ユニット': 'source-unit', 'トリドリ': 'source-toridori' };
+            return map[source] || 'source-other';
+        }
+
+        // リストをソートする共通関数 (未来の日付が上、日付なしは下)
+        function sortProjects(list) {
+            return list.sort((a, b) => {
+                if (!a.visitDate && !b.visitDate) return 0;
+                if (!a.visitDate) return 1;
+                if (!b.visitDate) return -1;
+                return new Date(b.visitDate) - new Date(a.visitDate); // 未来が上
+            });
         }
 
         function renderUpcoming() {
@@ -440,6 +470,7 @@
             const nextWeek = new Date();
             nextWeek.setDate(now.getDate() + 7);
 
+            // 近日予定は日付が近い順（昇順）
             const upcoming = projects
                 .filter(p => p.visitDate && new Date(p.visitDate) >= now && new Date(p.visitDate) <= nextWeek && p.status !== 'completed' && p.status !== 'failed')
                 .sort((a,b) => new Date(a.visitDate) - new Date(b.visitDate));
@@ -454,16 +485,11 @@
                 return `
                     <div class="glass-card p-5" onclick="editProject('${p.id}')">
                         <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-gray-800">${p.shopName}</h3>
+                            <div class="max-w-[70%]">
+                                <h3 class="font-bold text-gray-800 text-sm truncate">${p.shopName}</h3>
                                 <p class="text-[10px] text-red-500 font-bold mt-1">${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</p>
                             </div>
                             <span class="status-pill ${STATUS_MAP[p.status].class}">${STATUS_MAP[p.status].label}</span>
-                        </div>
-                        <div class="flex flex-wrap gap-1 mt-3 pt-3 border-t border-gray-100">
-                             <span class="text-[8px] font-bold px-1.5 py-0.5 rounded ${getSourceClass(p.source)}">${p.source}</span>
-                             ${(p.todos || []).map(t => `<span class="text-[8px] bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">${TODO_LABELS[t]}</span>`).join('')}
-                             ${(p.conditions || []).map(c => `<span class="text-[8px] bg-red-50 text-red-500 border border-red-100 px-1.5 py-0.5 rounded-full">${CONDITION_LABELS[c]}</span>`).join('')}
                         </div>
                     </div>
                 `;
@@ -473,26 +499,36 @@
         function renderList() {
             const container = document.getElementById('full-archive');
             const search = document.getElementById('search-input').value.toLowerCase();
-            let list = currentFilter === 'deleted' ? deletedProjects : projects;
+            let list = currentFilter === 'deleted' ? [...deletedProjects] : [...projects];
+            
+            // 検索とフィルタリング
             let filtered = list.filter(p => p.shopName.toLowerCase().includes(search));
             if (currentFilter !== 'all' && currentFilter !== 'deleted') filtered = filtered.filter(p => p.status === currentFilter);
 
-            container.innerHTML = filtered.map(p => `
+            // 並び順：未来の日付が上（降順）
+            const sorted = sortProjects(filtered);
+
+            container.innerHTML = sorted.map(p => {
+                const visitLabel = p.visitDate ? 
+                    `<p class="text-[9px] text-gray-400 mt-1 font-semibold">${p.visitDate.replace('T', ' ')}</p>` : '';
+                
+                return `
                 <div class="glass-card p-4 flex flex-col gap-2" onclick="editProject('${p.id}', ${currentFilter === 'deleted'})">
                     <div class="flex justify-between items-start">
-                        <div class="flex items-center gap-2 overflow-hidden">
-                            <span class="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getSourceClass(p.source)}">${p.source}</span>
-                            <h3 class="font-bold text-sm text-gray-800 truncate">${p.shopName}</h3>
+                        <div class="flex-grow overflow-hidden mr-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getSourceClass(p.source)}">${p.source}</span>
+                                <h3 class="font-bold text-sm text-gray-800 truncate">${p.shopName}</h3>
+                            </div>
+                            ${visitLabel}
                         </div>
                         <span class="status-pill shrink-0 ${STATUS_MAP[p.status]?.class || ''}">${STATUS_MAP[p.status]?.label || '不明'}</span>
                     </div>
-                    <div class="flex flex-wrap gap-1">
-                        ${(p.todos || []).map(t => `<span class="text-[8px] text-gray-500 bg-gray-100/50 px-1.5 py-0.5 rounded-full">${TODO_LABELS[t]}</span>`).join('')}
-                        ${(p.conditions || []).map(c => `<span class="text-[8px] text-red-400 bg-red-50/50 px-1.5 py-0.5 rounded-full">${CONDITION_LABELS[c]}</span>`).join('')}
-                    </div>
                 </div>
-            `).join('');
-            if (filtered.length === 0) container.innerHTML = `<p class="text-center text-white/30 text-xs py-10">案件がありません</p>`;
+            `;
+            }).join('');
+            
+            if (filtered.length === 0) container.innerHTML = `<p class="text-center text-white/30 text-xs py-10">該当する案件がありません</p>`;
         }
 
         function renderCalendar() {
@@ -508,9 +544,9 @@
                 const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const has = projects.some(p => p.visitDate?.startsWith(dateStr));
                 grid.innerHTML += `
-                    <div onclick="showDay('${dateStr}')" class="h-10 flex flex-col items-center justify-center rounded-lg hover:bg-black/5">
+                    <div onclick="showDay('${dateStr}')" class="h-12 flex flex-col items-center justify-center rounded-xl hover:bg-black/5 active:bg-black/10">
                         <span class="text-xs font-bold text-gray-700">${d}</span>
-                        ${has ? '<div class="w-1 h-1 bg-red-500 rounded-full"></div>' : ''}
+                        ${has ? '<div class="w-1.5 h-1.5 bg-red-500 rounded-full mt-0.5"></div>' : ''}
                     </div>
                 `;
             }
@@ -520,8 +556,8 @@
             const list = projects.filter(p => p.visitDate?.startsWith(date));
             const container = document.getElementById('calendar-day-details');
             if (list.length === 0) { container.innerHTML = ''; return; }
-            container.innerHTML = `<h4 class="text-white text-[10px] font-bold uppercase tracking-widest px-1">${date}</h4>` + list.map(p => `
-                <div class="glass-card p-4 flex justify-between items-center" onclick="editProject('${p.id}')">
+            container.innerHTML = `<h4 class="text-white text-[10px] font-bold uppercase px-1 mt-4 mb-2">${date}</h4>` + list.map(p => `
+                <div class="glass-card p-4 flex justify-between items-center mb-2" onclick="editProject('${p.id}')">
                     <div class="flex items-center gap-2">
                         <span class="text-[8px] font-bold px-1.5 py-0.5 rounded ${getSourceClass(p.source)}">${p.source}</span>
                         <span class="font-bold text-sm text-gray-800">${p.shopName}</span>
@@ -540,14 +576,9 @@
             document.getElementById('restore-btn').classList.add('hidden');
             document.getElementById('modal').classList.remove('hidden');
             document.querySelector('.modal-body').scrollTop = 0;
-            // ページ全体のスクロールを一時的に無効化
-            document.body.style.overflow = 'hidden';
         }
 
-        function closeModal() { 
-            document.getElementById('modal').classList.add('hidden');
-            document.body.style.overflow = '';
-        }
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
 
         function editProject(id, isDeleted = false) {
             const list = isDeleted ? deletedProjects : projects;
@@ -565,7 +596,7 @@
             if (isDeleted) {
                 document.getElementById('restore-btn').classList.remove('hidden');
                 document.getElementById('delete-btn').classList.remove('hidden');
-                document.getElementById('delete-btn').onclick = () => permanentlyDelete(id);
+                document.getElementById('delete-btn').onclick = () => { if(confirm('完全に削除しますけ？')){ deletedProjects = deletedProjects.filter(x => x.id !== id); saveData(); closeModal(); } };
             } else {
                 document.getElementById('delete-btn').classList.remove('hidden');
                 document.getElementById('delete-btn').onclick = deleteToTrash;
@@ -583,8 +614,7 @@
                 source: document.getElementById('source').value,
                 notes: document.getElementById('notes').value,
                 todos: Array.from(document.querySelectorAll('input[name="todo"]:checked')).map(el => el.value),
-                conditions: Array.from(document.querySelectorAll('input[name="condition"]:checked')).map(el => el.value),
-                updatedAt: new Date().toISOString()
+                conditions: Array.from(document.querySelectorAll('input[name="condition"]:checked')).map(el => el.value)
             };
             const idx = projects.findIndex(item => item.id === id);
             if (idx > -1) projects[idx] = p; else projects.push(p);
@@ -608,13 +638,6 @@
             if (idx === -1) return;
             projects.push(deletedProjects[idx]);
             deletedProjects.splice(idx, 1);
-            saveData();
-            closeModal();
-        }
-
-        function permanentlyDelete(id) {
-            if (!confirm('ゴミ箱からも完全に削除しますか？')) return;
-            deletedProjects = deletedProjects.filter(p => p.id !== id);
             saveData();
             closeModal();
         }
