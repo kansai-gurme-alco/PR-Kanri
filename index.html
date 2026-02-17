@@ -14,12 +14,12 @@
             --accent: #ff4757;
         }
 
-        /* 画面全体の固定：左右の揺れを完全に防止 */
+        /* 画面全体の固定：左右の揺れを徹底的に防止 */
         html, body {
             height: 100%;
             width: 100%;
             overflow: hidden; 
-            position: fixed;
+            position: fixed; /* 画面を固定してスクロールの遊びを消す */
             font-family: 'Montserrat', 'Noto Sans JP', sans-serif;
             background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
                         url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1000&q=80');
@@ -27,24 +27,27 @@
             background-position: center;
             overscroll-behavior: none; 
             -webkit-overflow-scrolling: touch;
+            touch-action: manipulation; /* ダブルタップズームなどを抑制 */
         }
 
         .app-shell {
-            height: 100vh;
+            height: 100%;
+            width: 100%;
             display: flex;
             flex-direction: column;
             max-width: 500px;
             margin: 0 auto;
             position: relative;
+            overflow: hidden;
         }
 
         /* メインスクロールエリア */
         .scroll-content {
             flex: 1;
             overflow-y: auto;
-            overflow-x: hidden;
+            overflow-x: hidden; /* 左右の揺れ防止 */
             padding: 16px;
-            padding-bottom: 180px; 
+            padding-bottom: 200px; 
             overscroll-behavior-y: contain;
         }
 
@@ -53,6 +56,12 @@
             backdrop-filter: blur(14px);
             border-radius: 24px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            width: 100%;
+        }
+
+        /* 入力欄のズーム防止: 16px以上に設定 */
+        input, select, textarea {
+            font-size: 16px !important; 
         }
 
         /* Source Badge Colors */
@@ -74,13 +83,13 @@
 
         .fab {
             position: absolute;
-            bottom: 115px; 
+            bottom: 125px; 
             right: 20px;
             z-index: 45;
             box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
         }
 
-        /* ナビゲーションバー */
+        /* ナビゲーションバーの再調整 */
         .bottom-nav {
             position: absolute;
             bottom: 0;
@@ -88,7 +97,7 @@
             right: 0;
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(10px);
-            padding-bottom: calc(15px + env(safe-area-inset-bottom));
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
             padding-top: 12px;
             display: flex;
             justify-content: space-around;
@@ -104,7 +113,7 @@
             align-items: center;
             justify-content: center;
             width: 80px;
-            height: 55px;
+            height: 60px;
             transition: all 0.2s;
             color: #94a3b8;
         }
@@ -122,15 +131,20 @@
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* Modal */
+        /* Modal - 揺れ防止のためposition:fixedで独立 */
         .modal-container {
             position: fixed;
-            inset: 0;
-            z-index: 100;
-            display: flex;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: none;
             align-items: flex-end;
             justify-content: center;
         }
+        .modal-container.active { display: flex; }
+        
         .modal-overlay {
             position: absolute;
             inset: 0;
@@ -140,13 +154,14 @@
         .modal-body {
             width: 100%;
             max-width: 500px;
-            max-height: 92vh;
+            max-height: 94vh;
             background: white;
             border-radius: 32px 32px 0 0;
             position: relative;
-            z-index: 110;
+            z-index: 1010;
             overflow-y: auto;
             padding-bottom: env(safe-area-inset-bottom);
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
         }
 
         .checkbox-group label {
@@ -156,10 +171,6 @@
         .checkbox-group input:checked + span {
             color: #ff4757;
             font-weight: bold;
-        }
-        .checkbox-group label:has(input:checked) {
-            background-color: #fff1f2;
-            border-color: #fecaca;
         }
     </style>
 </head>
@@ -223,7 +234,7 @@
                 <div class="space-y-4">
                     <div class="relative">
                         <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/60"></i>
-                        <input type="text" id="search-input" oninput="renderList()" placeholder="店舗名で検索..." class="w-full text-sm pl-10 pr-4 py-3 rounded-2xl bg-white/20 text-white placeholder-white/60 outline-none backdrop-blur-md">
+                        <input type="text" id="search-input" oninput="renderList()" placeholder="店舗名で検索..." class="w-full text-sm pl-10 pr-4 py-4 rounded-2xl bg-white/20 text-white placeholder-white/60 outline-none backdrop-blur-md">
                     </div>
                     <div class="flex gap-2 overflow-x-auto no-scrollbar">
                         <button onclick="filterByStatus('all')" id="filter-all" class="status-filter-btn active">すべて</button>
@@ -260,7 +271,7 @@
     </div>
 
     <!-- MODAL -->
-    <div id="modal" class="modal-container hidden">
+    <div id="modal" class="modal-container">
         <div class="modal-overlay" onclick="closeModal()"></div>
         <div class="modal-body no-scrollbar">
             <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-4 shrink-0"></div>
@@ -272,13 +283,13 @@
                     <div class="space-y-4">
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">店舗名 *</label>
-                            <input type="text" id="shop-name" required class="w-full p-4 bg-gray-50 rounded-xl outline-none ring-1 ring-gray-100 focus:ring-red-400">
+                            <input type="text" id="shop-name" required class="w-full p-4 bg-gray-50 rounded-xl outline-none border border-transparent focus:border-red-400">
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
                             <div class="space-y-1">
                                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ステータス</label>
-                                <select id="status" class="w-full p-4 bg-gray-50 rounded-xl outline-none ring-1 ring-gray-100">
+                                <select id="status" class="w-full p-4 bg-gray-50 rounded-xl outline-none border border-transparent">
                                     <option value="negotiating">交渉中</option>
                                     <option value="adjusting">日程調整</option>
                                     <option value="upcoming">来店予定</option>
@@ -288,13 +299,13 @@
                             </div>
                             <div class="space-y-1">
                                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">来店日時</label>
-                                <input type="datetime-local" id="visit-date" class="w-full p-4 bg-gray-50 rounded-xl outline-none ring-1 ring-gray-100">
+                                <input type="datetime-local" id="visit-date" class="w-full p-4 bg-gray-50 rounded-xl outline-none border border-transparent">
                             </div>
                         </div>
 
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">依頼媒体</label>
-                            <select id="source" class="w-full p-4 bg-gray-50 rounded-xl outline-none ring-1 ring-gray-100">
+                            <select id="source" class="w-full p-4 bg-gray-50 rounded-xl outline-none border border-transparent">
                                 <option value="Instagram">Instagram</option>
                                 <option value="TikTok">TikTok</option>
                                 <option value="ユニット">ユニット</option>
@@ -309,66 +320,23 @@
                         <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">依頼内容（TODO）</label>
                         <div class="grid grid-cols-2 gap-2 checkbox-group">
                             <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="feed" class="accent-red-500"> <span class="text-[11px]">フィード</span>
+                                <input type="checkbox" name="todo" value="feed" class="w-5 h-5 accent-red-500"> <span class="text-[11px]">フィード</span>
                             </label>
                             <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="reels" class="accent-red-500"> <span class="text-[11px]">リール</span>
+                                <input type="checkbox" name="todo" value="reels" class="w-5 h-5 accent-red-500"> <span class="text-[11px]">リール</span>
                             </label>
                             <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="google" class="accent-red-500"> <span class="text-[11px]">Google</span>
+                                <input type="checkbox" name="todo" value="google" class="w-5 h-5 accent-red-500"> <span class="text-[11px]">Google</span>
                             </label>
                             <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="tieup" class="accent-red-500"> <span class="text-[11px]">タイアップ</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="insight" class="accent-red-500"> <span class="text-[11px]">インサイト</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="tabelog" class="accent-red-500"> <span class="text-[11px]">食べログ</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="link" class="accent-red-500"> <span class="text-[11px]">リンク</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="todo" value="hashtag" class="accent-red-500"> <span class="text-[11px]">タグ</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- 条件 -->
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">条件</label>
-                        <div class="grid grid-cols-2 gap-2 checkbox-group">
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="condition" value="free_eat" class="accent-red-500"> <span class="text-[11px]">飲食自由</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="condition" value="course" class="accent-red-500"> <span class="text-[11px]">コース</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="condition" value="food_spec" class="accent-red-500"> <span class="text-[11px]">料理指定</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="condition" value="drink_spec" class="accent-red-500"> <span class="text-[11px]">ドリンク指定</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="condition" value="plus1" class="accent-red-500"> <span class="text-[11px]">同伴1名</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="condition" value="plus2" class="accent-red-500"> <span class="text-[11px]">同伴2名以上</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="condition" value="free" class="accent-red-500"> <span class="text-[11px]">無償</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="condition" value="paid" class="accent-red-500"> <span class="text-[11px]">有償</span>
+                                <input type="checkbox" name="todo" value="tieup" class="w-5 h-5 accent-red-500"> <span class="text-[11px]">タイアップ</span>
                             </label>
                         </div>
                     </div>
 
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">備考</label>
-                        <textarea id="notes" class="w-full p-4 bg-gray-50 rounded-xl outline-none ring-1 ring-gray-100 h-24"></textarea>
+                        <textarea id="notes" class="w-full p-4 bg-gray-50 rounded-xl outline-none h-24 border border-transparent focus:border-red-400"></textarea>
                     </div>
                 </div>
 
@@ -379,26 +347,19 @@
                     <button type="button" onclick="restoreFromTrash()" id="restore-btn" class="hidden flex-shrink-0 w-14 h-14 bg-green-100 text-green-600 rounded-xl flex items-center justify-center">
                         <i data-lucide="refresh-ccw"></i>
                     </button>
-                    <button type="submit" class="flex-grow bg-gray-900 text-white font-bold h-14 rounded-xl">保存する</button>
+                    <button type="submit" class="flex-grow bg-gray-900 text-white font-bold h-14 rounded-xl active:scale-[0.98]">保存する</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        let projects = JSON.parse(localStorage.getItem('pr_manager_v8') || '[]');
-        let deletedProjects = JSON.parse(localStorage.getItem('pr_manager_deleted_v8') || '[]');
+        // Use v9 to ensure fresh state
+        let projects = JSON.parse(localStorage.getItem('pr_manager_v9') || '[]');
+        let deletedProjects = JSON.parse(localStorage.getItem('pr_manager_deleted_v9') || '[]');
         let currentMonth = new Date();
         let currentFilter = 'all';
 
-        const TODO_LABELS = { 
-            feed: 'フィード', reels: 'リール', insight: 'インサイト', google: 'Google', 
-            tieup: 'タイアップ', tabelog: '食べログ', link: 'リンク', hashtag: 'タグ' 
-        };
-        const CONDITION_LABELS = { 
-            free_eat: '飲食自由', course: 'コース', food_spec: '料理指定', drink_spec: 'ドリンク指定', 
-            plus1: '同伴1名', plus2: '同伴2名以上', free: '無償', paid: '有償' 
-        };
         const STATUS_MAP = {
             negotiating: { label: '交渉中', class: 'status-negotiating' },
             adjusting: { label: '日程調整', class: 'status-adjusting' },
@@ -413,8 +374,8 @@
         };
 
         function saveData() {
-            localStorage.setItem('pr_manager_v8', JSON.stringify(projects));
-            localStorage.setItem('pr_manager_deleted_v8', JSON.stringify(deletedProjects));
+            localStorage.setItem('pr_manager_v9', JSON.stringify(projects));
+            localStorage.setItem('pr_manager_deleted_v9', JSON.stringify(deletedProjects));
             renderAll();
         }
 
@@ -431,7 +392,7 @@
             const completedCount = projects.filter(p => p.status === 'completed').length;
             document.getElementById('stat-active').innerText = activeCount;
             document.getElementById('stat-completed').innerText = completedCount;
-            document.getElementById('stat-total').innerText = projects.length; // 進行中+完了の合計値
+            document.getElementById('stat-total').innerText = projects.length; 
         }
 
         function switchTab(tab) {
@@ -454,13 +415,12 @@
             return map[source] || 'source-other';
         }
 
-        // リストをソートする共通関数 (未来の日付が上、日付なしは下)
         function sortProjects(list) {
             return list.sort((a, b) => {
                 if (!a.visitDate && !b.visitDate) return 0;
                 if (!a.visitDate) return 1;
                 if (!b.visitDate) return -1;
-                return new Date(b.visitDate) - new Date(a.visitDate); // 未来が上
+                return new Date(b.visitDate) - new Date(a.visitDate); 
             });
         }
 
@@ -470,7 +430,6 @@
             const nextWeek = new Date();
             nextWeek.setDate(now.getDate() + 7);
 
-            // 近日予定は日付が近い順（昇順）
             const upcoming = projects
                 .filter(p => p.visitDate && new Date(p.visitDate) >= now && new Date(p.visitDate) <= nextWeek && p.status !== 'completed' && p.status !== 'failed')
                 .sort((a,b) => new Date(a.visitDate) - new Date(b.visitDate));
@@ -500,34 +459,24 @@
             const container = document.getElementById('full-archive');
             const search = document.getElementById('search-input').value.toLowerCase();
             let list = currentFilter === 'deleted' ? [...deletedProjects] : [...projects];
-            
-            // 検索とフィルタリング
             let filtered = list.filter(p => p.shopName.toLowerCase().includes(search));
             if (currentFilter !== 'all' && currentFilter !== 'deleted') filtered = filtered.filter(p => p.status === currentFilter);
-
-            // 並び順：未来の日付が上（降順）
             const sorted = sortProjects(filtered);
 
-            container.innerHTML = sorted.map(p => {
-                const visitLabel = p.visitDate ? 
-                    `<p class="text-[9px] text-gray-400 mt-1 font-semibold">${p.visitDate.replace('T', ' ')}</p>` : '';
-                
-                return `
-                <div class="glass-card p-4 flex flex-col gap-2" onclick="editProject('${p.id}', ${currentFilter === 'deleted'})">
+            container.innerHTML = sorted.map(p => `
+                <div class="glass-card p-4 flex flex-col gap-2 mb-3" onclick="editProject('${p.id}', ${currentFilter === 'deleted'})">
                     <div class="flex justify-between items-start">
                         <div class="flex-grow overflow-hidden mr-2">
                             <div class="flex items-center gap-2">
                                 <span class="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getSourceClass(p.source)}">${p.source}</span>
                                 <h3 class="font-bold text-sm text-gray-800 truncate">${p.shopName}</h3>
                             </div>
-                            ${visitLabel}
+                            ${p.visitDate ? `<p class="text-[9px] text-gray-400 mt-1 font-semibold">${p.visitDate.replace('T', ' ')}</p>` : ''}
                         </div>
                         <span class="status-pill shrink-0 ${STATUS_MAP[p.status]?.class || ''}">${STATUS_MAP[p.status]?.label || '不明'}</span>
                     </div>
                 </div>
-            `;
-            }).join('');
-            
+            `).join('');
             if (filtered.length === 0) container.innerHTML = `<p class="text-center text-white/30 text-xs py-10">該当する案件がありません</p>`;
         }
 
@@ -544,7 +493,7 @@
                 const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const has = projects.some(p => p.visitDate?.startsWith(dateStr));
                 grid.innerHTML += `
-                    <div onclick="showDay('${dateStr}')" class="h-12 flex flex-col items-center justify-center rounded-xl hover:bg-black/5 active:bg-black/10">
+                    <div onclick="showDay('${dateStr}')" class="h-12 flex flex-col items-center justify-center rounded-xl active:bg-black/5">
                         <span class="text-xs font-bold text-gray-700">${d}</span>
                         ${has ? '<div class="w-1.5 h-1.5 bg-red-500 rounded-full mt-0.5"></div>' : ''}
                     </div>
@@ -574,11 +523,15 @@
             document.getElementById('modal-title').innerText = '案件登録';
             document.getElementById('delete-btn').classList.add('hidden');
             document.getElementById('restore-btn').classList.add('hidden');
-            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('active');
             document.querySelector('.modal-body').scrollTop = 0;
+            // モーダル表示時に背後をロック
+            document.body.style.overflow = 'hidden';
         }
 
-        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+        function closeModal() { 
+            document.getElementById('modal').classList.remove('active'); 
+        }
 
         function editProject(id, isDeleted = false) {
             const list = isDeleted ? deletedProjects : projects;
@@ -592,11 +545,10 @@
             document.getElementById('source').value = p.source;
             document.getElementById('notes').value = p.notes || '';
             document.querySelectorAll('input[name="todo"]').forEach(cb => cb.checked = (p.todos || []).includes(cb.value));
-            document.querySelectorAll('input[name="condition"]').forEach(cb => cb.checked = (p.conditions || []).includes(cb.value));
             if (isDeleted) {
                 document.getElementById('restore-btn').classList.remove('hidden');
                 document.getElementById('delete-btn').classList.remove('hidden');
-                document.getElementById('delete-btn').onclick = () => { if(confirm('完全に削除しますけ？')){ deletedProjects = deletedProjects.filter(x => x.id !== id); saveData(); closeModal(); } };
+                document.getElementById('delete-btn').onclick = () => { if(confirm('完全に削除しますか？')){ deletedProjects = deletedProjects.filter(x => x.id !== id); saveData(); closeModal(); } };
             } else {
                 document.getElementById('delete-btn').classList.remove('hidden');
                 document.getElementById('delete-btn').onclick = deleteToTrash;
@@ -614,7 +566,7 @@
                 source: document.getElementById('source').value,
                 notes: document.getElementById('notes').value,
                 todos: Array.from(document.querySelectorAll('input[name="todo"]:checked')).map(el => el.value),
-                conditions: Array.from(document.querySelectorAll('input[name="condition"]:checked')).map(el => el.value)
+                conditions: [] 
             };
             const idx = projects.findIndex(item => item.id === id);
             if (idx > -1) projects[idx] = p; else projects.push(p);
